@@ -1,0 +1,6 @@
+*.tgz
+*.pyc
+*.swp
+*.o
+__pycache__
+data/
