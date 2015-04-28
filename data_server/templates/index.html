@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+  <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='index.css') }}">
+
+  <title> ^_^;; </title>
+
+</head>
+
+<body>
+  
+  <div id="wrapper">
+    {% for f in profiles %}
+    <div class="item"> <a href='graph/{{ f["name"] }}'> {{f["name"]}} </a>
+      <div class="{{f['type']}}"> {{ f['type']|upper }} </div>
+    </div> 
+    {% endfor %}
+  </div>
+
+</body>
