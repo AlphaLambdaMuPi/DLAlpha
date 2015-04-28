@@ -6,14 +6,11 @@ import numpy as np
 import random
 logger = logging.getLogger()
 
-def init():
-    with shelve.open(SHELVE['train']) as sh:
-        global train_names
-        train_names = sh['names']
+with shelve.open(SHELVE['train']) as sh:
+    train_names = sh['names']
 
-    with shelve.open(SHELVE['test']) as sh:
-        global test_names
-        test_names = sh['names']
+with shelve.open(SHELVE['test']) as sh:
+    test_names = sh['names']
 
 def read_train_by_group(cnt = None, rnd=True, ls = None):
     

@@ -1,22 +1,22 @@
 from os.path import join as pjoin
+from settings import *
 
-def init():
-    global phomap, phonemes, invphomap
-    with open(pjoin(PATH['phones'], '48_39.map')) as f:
-        for ln in f:
-            ls = ln.split()
-            phomap[ls[0]] = ls[1]
+phomap = {}
+with open(pjoin(PATH['phones'], '48_39.map')) as f:
+    for ln in f:
+        ls = ln.split()
+        phomap[ls[0]] = ls[1]
 
-    with open(pjoin(PATH['phones'], '48_idx_chr.map')) as f:
-        for ln in f:
-            ls = ln.split()
-            phomap[ls[0]] = (int(ls[1]), phomap[ls[0]], ls[2])
+with open(pjoin(PATH['phones'], '48_idx_chr.map')) as f:
+    for ln in f:
+        ls = ln.split()
+        phomap[ls[0]] = (int(ls[1]), phomap[ls[0]], ls[2])
 
-    phonemes = phomap.keys()
-    invphomap = {}
+phonemes = phomap.keys()
+invphomap = {}
 
-    for ph in phomap:
-        invphomap[phomap[ph][0]] = ph
+for ph in phomap:
+    invphomap[phomap[ph][0]] = ph
 
 def ph2id(p):
     return phomap[p][0]

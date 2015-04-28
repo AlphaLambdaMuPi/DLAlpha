@@ -3,16 +3,21 @@ import sys, os
 from settings import *
 import argparse
 import init
-from read_input import read_train_by_group
-import read_input
+import importlib
 
 class Main():
     def __init__(self):
         parser = argparse.ArgumentParser()
-        parser.add_argument('--log', type=int, action='store', dest='log', default=1)
+        parser.add_argument('--log', type=int, action='store',
+                            dest='log', default=1,
+                            help='Log levels, [1] = debug, [2] = info, ...')
         subpars = parser.add_subparsers(dest='verb')
 
         init_parser = subpars.add_parser('init')
+        run_parser = subpars.add_parser('run')
+
+        run_parser.add_argument('profile', type=str, action='store',
+                                help='Profile name')
 
         args = parser.parse_args()
 
@@ -31,6 +36,13 @@ class Main():
 
     def init(self):
         init.init()
+
+    def run(self, profile):
+        P = importlib.import_module('profiles.{}'.format(profile))
+        ex = P.Executor()
+        ex.start()
+
+
 
 def init_log_settings():
     logging.basicConfig(format='[%(asctime)s.%(msecs)d] %(module)s - %(levelname)s : %(message)s',

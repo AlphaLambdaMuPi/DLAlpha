@@ -7,7 +7,11 @@ def flatten(inp):
 
 def pair_to_np(inp):
     X, Y = zip(*inp)
-    resX = numpy.asarray(X)
-    resY = numpy.asarray(map(ph2id, Y))
+    resX = np.asarray(X)
+    resY = np.asarray(list(map(ph2id, Y)))
     return resX, resY
+
+def y_to_01(inp, K):
+    res = np.asarray( [1 * (np.arange(K) == y) for y in inp] )
+    return res
 

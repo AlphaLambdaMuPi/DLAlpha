@@ -9,6 +9,7 @@ PATH['data'] = abspath(pjoin(PATH['root'], 'data'))
 PATH['mfcc'] = abspath(pjoin(PATH['data'], 'mfcc'))
 PATH['fbank'] = abspath(pjoin(PATH['data'], 'fbank'))
 PATH['label'] = abspath(pjoin(PATH['data'], 'label'))
+PATH['phones'] = abspath(pjoin(PATH['data'], 'phones'))
 PATH['shelve'] = abspath(pjoin(PATH['data'], 'shelve'))
 PATH['output'] = abspath(pjoin(PATH['root'], 'output'))
 
