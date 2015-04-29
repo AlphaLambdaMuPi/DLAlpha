@@ -1,5 +1,6 @@
 import numpy as np
 from phomap import ph2id
+from theano import config
 
 def flatten(inp):
     res = [(fr[1]+fr[2], fr[3]) for n in inp for fr in n[1]]

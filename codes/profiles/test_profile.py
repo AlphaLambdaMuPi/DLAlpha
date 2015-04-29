@@ -3,6 +3,7 @@ from trainer.base_dnn_trainer import BaseDnnTrainer
 from dnn.simple_dnn import SimpleDnn
 import numpy as np
 from preproc import flatten, pair_to_np, y_to_01
+from theano import config
 
 np.set_printoptions(threshold=np.nan)
 
@@ -44,10 +45,10 @@ class Executor:
         return pair_to_np(flatten(inp))
 
     def preprocX(self, inp):
-        return inp
+        return inp.astype(config.floatX)
 
     def preprocY(self, inp):
-        return y_to_01(inp, 48)
+        return y_to_01(inp, 48).astype(config.floatX)
 
     def split_validate(self, X, Y):
         n = X.shape[0]
