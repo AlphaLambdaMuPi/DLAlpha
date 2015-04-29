@@ -52,15 +52,17 @@ def init(valp, shuffle, normalize, prefix):
                 / np.std(train_features, axis=0))
 
     def save_h5py(tn, start, stop):
-        np.save(pjoin(numpy_path, prefix+tn+'_features.npy'), train_features[start:stop])
-        np.save(pjoin(numpy_path, prefix+tn+'_targets.npy'), train_targets[start:stop])
+        cf = train_features[start:stop]
+        ct = train_targets[start:stop]
+        np.save(pjoin(numpy_path, prefix+tn+'_features.npy'), cf)
+        np.save(pjoin(numpy_path, prefix+tn+'_targets.npy'), ct)
         h5 = h5py.File(pjoin(fuel_path, prefix+tn+'.hdf5'), mode='w')
         h5_features = h5.create_dataset(
-            'features', train_features.shape, dtype='float32')
-        h5_features[...] = train_features
+            'features', cf.shape, dtype='float32')
+        h5_features[...] = cf
         h5_targets = h5.create_dataset(
-            'targets', train_targets.shape, dtype='uint8')
-        h5_targets[...] = train_targets
+            'targets', ct.shape, dtype='uint8')
+        h5_targets[...] = ct
         h5_features.dims[0].label = 'batch'
         h5_features.dims[1].label = 'feature'
         h5_targets.dims[0].label = 'batch'

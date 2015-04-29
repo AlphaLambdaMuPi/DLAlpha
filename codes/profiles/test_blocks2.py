@@ -50,6 +50,6 @@ class Executor:
                 data_stream=data_stream_v)
         main_loop = MainLoop(data_stream = data_stream, 
                 algorithm=algo, 
-                extensions=[monitor, monitor_v, FinishAfter(after_n_epochs=30), Printing()])
+                extensions=[monitor_v, FinishAfter(after_n_epochs=30), Printing()])
         
         main_loop.run()
