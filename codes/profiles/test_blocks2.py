@@ -25,31 +25,36 @@ class Executor:
     def start(self):
         x = T.matrix('features', config.floatX)
         y = T.imatrix('targets')
-        mlp = MLP(activations = [Rectifier(name='r0'), Rectifier(name='r1'), Softmax(name='r2')],
-             dims=[108, 200, 200, 48], weights_init=IsotropicGaussian(std=0.1, mean=0), biases_init=IsotropicGaussian(std=0.1))
+        mlp = MLP(activations = [Rectifier(name='r0'), Rectifier(name='r1'), Rectifier(name='r3'),Softmax(name='r2')],
+             dims=[108, 1000, 1000, 1000, 48], weights_init=IsotropicGaussian(std=0.1, mean=0), biases_init=IsotropicGaussian(std=0.1))
         y_hat = mlp.apply(x)
-        cost = CategoricalCrossEntropy().apply(y.flatten(), y_hat)
-        lost01 = MisclassificationRate().apply(y.flatten(), y_hat)
+        cost = CategoricalCrossEntropy().apply(y.flatten(), y_hat).astype(config.floatX)
+        cost.name = 'cost'
+        lost01 = MisclassificationRate().apply(y.flatten(), y_hat).astype(config.floatX)
+        lost01.name = '0/1 loss'
+        lost23 = MisclassificationRate().apply(y.flatten(), y_hat).astype(config.floatX)
+        lost23.name = '2/3 loss'
         cg = ComputationGraph(cost)
         Ws = VariableFilter(roles=[WEIGHT])(cg.variables)
         norms = Ws[0].norm(2) + Ws[1].norm(2) + Ws[2].norm(2)
         norms.name = 'norms'
         mlp.initialize()
         path = pjoin(PATH['fuel'], 'train.hdf5')
-        data = H5PYDataset(path, which_set='train')
-        data_v = H5PYDataset(pjoin(PATH['fuel'], 'validate.hdf5'), which_set='validate')
+        MAN = 100000
+        data = H5PYDataset(path, which_set='train', load_in_memory=True, subset=slice(0, MAN))
+        data_v = H5PYDataset(pjoin(PATH['fuel'], 'validate.hdf5'), which_set='validate', load_in_memory=True)
         num = data.num_examples
         data_stream = DataStream(data, iteration_scheme=SequentialScheme(
-                        data.num_examples, batch_size=128))
+                        num, batch_size=128))
         data_stream_v = DataStream(data_v, iteration_scheme=SequentialScheme(
                         data_v.num_examples, batch_size=128))
         algo = GradientDescent(cost=cost, params=cg.parameters, step_rule=CompositeRule([AdaDelta()]))
         monitor = DataStreamMonitoring( variables=[cost, lost01, norms],
                 data_stream=data_stream)
-        monitor_v = DataStreamMonitoring( variables=[lost01],
+        monitor_v = DataStreamMonitoring( variables=[lost23],
                 data_stream=data_stream_v)
         main_loop = MainLoop(data_stream = data_stream, 
                 algorithm=algo, 
-                extensions=[monitor, monitor_v, FinishAfter(after_n_epochs=30), Printing()])
+                extensions=[monitor, monitor_v, FinishAfter(after_n_epochs=50), Printing()])
         
         main_loop.run()
