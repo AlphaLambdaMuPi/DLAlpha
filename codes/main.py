@@ -22,8 +22,12 @@ class Main():
 
         init_fuel_parser.add_argument('-v', '--validate-percentage', type=float, action='store',
                                 help='percentage of validate datas', default=0.1, dest='valp')
-        init_fuel_parser.add_argument('-r', '--write-fuelrc', action='store_true',
-                                help='rewrite ~/.fuelrc', dest='write_fuelrc')
+        init_fuel_parser.add_argument('-s', '--shuffle', action='store_true',
+                                help='Random shuffle the data', dest='shuffle')
+        init_fuel_parser.add_argument('-n', '--normalize', action='store_true',
+                                help='Normalize the data', dest='normalize')
+        init_fuel_parser.add_argument('-p', '--prefix', action='store', type=str, default='',
+                                help='The prefix of the file, default konkon', dest='prefix')
 
         args = parser.parse_args()
 
@@ -48,8 +52,8 @@ class Main():
         ex = P.Executor()
         ex.start()
 
-    def init_fuel(self, valp, write_fuelrc):
-        init_fuel.init(valp, write_fuelrc)
+    def init_fuel(self, **kwargs):
+        init_fuel.init(valp, **kwargs)
 
 
 
