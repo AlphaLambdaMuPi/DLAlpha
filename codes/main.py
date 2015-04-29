@@ -53,7 +53,7 @@ class Main():
         ex.start()
 
     def init_fuel(self, **kwargs):
-        init_fuel.init(valp, **kwargs)
+        init_fuel.init(**kwargs)
 
 
 
