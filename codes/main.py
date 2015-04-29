@@ -2,7 +2,7 @@
 import sys, os
 from settings import *
 import argparse
-import init
+import init, init_fuel
 import importlib
 
 class Main():
@@ -14,10 +14,16 @@ class Main():
         subpars = parser.add_subparsers(dest='verb')
 
         init_parser = subpars.add_parser('init')
+        init_fuel_parser = subpars.add_parser('init_fuel')
         run_parser = subpars.add_parser('run')
 
         run_parser.add_argument('profile', type=str, action='store',
                                 help='Profile name')
+
+        init_fuel_parser.add_argument('-v', '--validate-percentage', type=float, action='store',
+                                help='percentage of validate datas', default=0.1, dest='valp')
+        init_fuel_parser.add_argument('-r', '--write-fuelrc', action='store_true',
+                                help='rewrite ~/.fuelrc', dest='write_fuelrc')
 
         args = parser.parse_args()
 
@@ -41,6 +47,9 @@ class Main():
         P = importlib.import_module('profiles.{}'.format(profile))
         ex = P.Executor()
         ex.start()
+
+    def init_fuel(self, valp, write_fuelrc):
+        init_fuel.init(valp, write_fuelrc)
 
 
 
