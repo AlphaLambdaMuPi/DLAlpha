@@ -35,7 +35,6 @@ def init(valp, shuffle, normalize, prefix):
                     fet.append(fr[1] + fr[2])
                     lab.append([ph2id(fr[3])])
                 cnt += 1
-                if cnt >= 200: break
                 progbar.update(cnt)
 
 
