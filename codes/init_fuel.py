@@ -33,7 +33,7 @@ def init(valp, wr):
                     fet.append(fr[1] + fr[2])
                     lab.append([ph2id(fr[3])])
                 cnt += 1
-                if cnt >= 400: break
+                # if cnt >= 400: break
                 progbar.update(cnt)
 
     tr_n = int(len(fet) * (1 - valp))
