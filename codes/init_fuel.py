@@ -49,7 +49,7 @@ def init(valp, shuffle, normalize, prefix):
 
     if normalize:
         train_features = ((train_features - np.mean(train_features, axis=0))
-                / np.std(train_features, axis=0))
+                / (np.std(train_features, axis=0)) + 1E-2)
 
     def save_h5py(tn, start, stop):
         cf = train_features[start:stop]

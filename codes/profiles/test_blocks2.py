@@ -1,17 +1,19 @@
 import theano.tensor as T
 from theano import config
 from blocks.bricks import MLP, Rectifier, Softmax
+from blocks.bricks.recurrent import *
 from blocks.initialization import IsotropicGaussian, Constant
 import fuel, blocks
 from fuel.datasets.hdf5 import H5PYDataset
 from fuel.streams import DataStream
 from fuel.schemes import SequentialScheme, ShuffledScheme
 from blocks.initialization import IsotropicGaussian, Constant
-from blocks.algorithms import GradientDescent, Scale, AdaDelta, StepClipping, CompositeRule
+from blocks.algorithms import *
 from blocks.bricks import WEIGHT
+from blocks.roles import INPUT
 from blocks.filter import VariableFilter
 from blocks.bricks.cost import CategoricalCrossEntropy, MisclassificationRate
-from blocks.graph import ComputationGraph
+from blocks.graph import ComputationGraph, apply_dropout
 from blocks.main_loop import MainLoop
 from blocks.extensions import FinishAfter, Printing
 from blocks.extensions.monitoring import DataStreamMonitoring
@@ -25,9 +27,11 @@ class Executor:
     def start(self):
         x = T.matrix('features', config.floatX)
         y = T.imatrix('targets')
-        mlp = MLP(activations = [Rectifier(name='r0'), Rectifier(name='r1'), Rectifier(name='r3'),Softmax(name='r2')],
-             dims=[108, 1000, 1000, 1000, 48], weights_init=IsotropicGaussian(std=0.1, mean=0), biases_init=IsotropicGaussian(std=0.1))
+        mlp = MLP(activations = [Rectifier(name='r0'), Rectifier(name='r1'), Rectifier(name='r3'), Softmax(name='r2')],
+             dims=[108, 100, 100, 100, 48], weights_init=IsotropicGaussian(std=0.05, mean=0), biases_init=IsotropicGaussian(std=0.1))
+        # mlp = SimpleRecurrent(dim=200, activation=Rectifier(), weights_init=IsotropicGaussian(std=0.1))
         y_hat = mlp.apply(x)
+        # y_hat = Softmax().apply(mlp.apply(x))
         cost = CategoricalCrossEntropy().apply(y.flatten(), y_hat).astype(config.floatX)
         cost.name = 'cost'
         lost01 = MisclassificationRate().apply(y.flatten(), y_hat).astype(config.floatX)
@@ -35,20 +39,23 @@ class Executor:
         lost23 = MisclassificationRate().apply(y.flatten(), y_hat).astype(config.floatX)
         lost23.name = '2/3 loss'
         cg = ComputationGraph(cost)
+        # inputs = VariableFilter(roles=[WEIGHT])(cg.variables)
+        # cg = apply_dropout(cg, inputs, 0.5)
+        # while True: pass
         Ws = VariableFilter(roles=[WEIGHT])(cg.variables)
-        norms = Ws[0].norm(2) + Ws[1].norm(2) + Ws[2].norm(2)
+        norms = sum(w.norm(2) for w in Ws)
         norms.name = 'norms'
         mlp.initialize()
         path = pjoin(PATH['fuel'], 'train.hdf5')
-        MAN = 100000
-        data = H5PYDataset(path, which_set='train', load_in_memory=True, subset=slice(0, MAN))
+        data = H5PYDataset(path, which_set='train', load_in_memory=True, subset=slice(0, 100000))
+        # data = H5PYDataset(path, which_set='train', load_in_memory=True)
         data_v = H5PYDataset(pjoin(PATH['fuel'], 'validate.hdf5'), which_set='validate', load_in_memory=True)
         num = data.num_examples
-        data_stream = DataStream(data, iteration_scheme=SequentialScheme(
+        data_stream = DataStream(data, iteration_scheme=ShuffledScheme(
                         num, batch_size=128))
         data_stream_v = DataStream(data_v, iteration_scheme=SequentialScheme(
                         data_v.num_examples, batch_size=128))
-        algo = GradientDescent(cost=cost, params=cg.parameters, step_rule=CompositeRule([AdaDelta()]))
+        algo = GradientDescent(cost=cost, params=cg.parameters, step_rule=CompositeRule([AdaDelta(0.9)]))
         monitor = DataStreamMonitoring( variables=[cost, lost01, norms],
                 data_stream=data_stream)
         monitor_v = DataStreamMonitoring( variables=[lost23],
