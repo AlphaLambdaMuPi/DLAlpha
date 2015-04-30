@@ -27,8 +27,14 @@ class Executor:
     def start(self):
         x = T.matrix('features', config.floatX)
         y = T.imatrix('targets')
-        mlp = MLP(activations = [Rectifier(name='r0'), Rectifier(name='r1'), Rectifier(name='r3'), Softmax(name='r2')],
-             dims=[108, 100, 100, 100, 48], weights_init=IsotropicGaussian(std=0.05, mean=0), biases_init=IsotropicGaussian(std=0.1))
+        mlp = MLP(activations = [
+            Rectifier(name='r0'), 
+            Rectifier(name='r1'), 
+            Rectifier(name='r2'), 
+            Rectifier(name='r3'), 
+            Softmax(name='rs')
+        ],
+             dims=[108*5, 2000, 2000, 2000, 2000, 48], weights_init=IsotropicGaussian(std=0.015, mean=0), biases_init=IsotropicGaussian(std=0.1))
         # mlp = SimpleRecurrent(dim=200, activation=Rectifier(), weights_init=IsotropicGaussian(std=0.1))
         y_hat = mlp.apply(x)
         # y_hat = Softmax().apply(mlp.apply(x))
@@ -47,15 +53,15 @@ class Executor:
         norms.name = 'norms'
         mlp.initialize()
         path = pjoin(PATH['fuel'], 'train.hdf5')
-        data = H5PYDataset(path, which_set='train', load_in_memory=True, subset=slice(0, 100000))
-        # data = H5PYDataset(path, which_set='train', load_in_memory=True)
+        # data = H5PYDataset(path, which_set='train', load_in_memory=True, subset=slice(0, 100000))
+        data = H5PYDataset(path, which_set='train', load_in_memory=True)
         data_v = H5PYDataset(pjoin(PATH['fuel'], 'validate.hdf5'), which_set='validate', load_in_memory=True)
         num = data.num_examples
         data_stream = DataStream(data, iteration_scheme=ShuffledScheme(
                         num, batch_size=128))
         data_stream_v = DataStream(data_v, iteration_scheme=SequentialScheme(
                         data_v.num_examples, batch_size=128))
-        algo = GradientDescent(cost=cost, params=cg.parameters, step_rule=CompositeRule([AdaDelta(0.9)]))
+        algo = GradientDescent(cost=cost, params=cg.parameters, step_rule=CompositeRule([Momentum(0.002, 0.9)]))
         monitor = DataStreamMonitoring( variables=[cost, lost01, norms],
                 data_stream=data_stream)
         monitor_v = DataStreamMonitoring( variables=[lost23],
