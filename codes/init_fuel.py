@@ -3,7 +3,6 @@ import shelve
 import numpy as np
 import os
 from os.path import join as pjoin
-from phomap import ph2id
 from progressbar import ProgressBar
 import logging
 import random
@@ -12,6 +11,7 @@ from fuel.datasets.hdf5 import Hdf5Dataset, H5PYDataset
 lgr = logging.getLogger()
 
 def init(valp, shuffle, normalize, prefix):
+    from phomap import ph2id
     numpy_path = pjoin(PATH['data'], 'numpy')
     fuel_path = pjoin(PATH['data'], 'fuel')
     for p in (numpy_path, fuel_path):
