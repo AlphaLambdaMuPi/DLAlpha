@@ -10,7 +10,7 @@ from fuel.schemes import SequentialScheme, ShuffledScheme
 from blocks.initialization import IsotropicGaussian, Constant
 from blocks.algorithms import *
 from blocks.bricks import WEIGHT
-from blocks.roles import INPUT
+from blocks.roles import INPUT, DROPOUT
 from blocks.filter import VariableFilter
 from blocks.bricks.cost import CategoricalCrossEntropy, MisclassificationRate
 from blocks.graph import ComputationGraph, apply_dropout
@@ -31,10 +31,10 @@ class Executor:
             Rectifier(name='r0'), 
             Rectifier(name='r1'), 
             Rectifier(name='r2'), 
-            Rectifier(name='r3'), 
+            # Rectifier(name='r3'), 
             Softmax(name='rs')
         ],
-             dims=[108*5, 2000, 2000, 2000, 2000, 48], weights_init=IsotropicGaussian(std=0.015, mean=0), biases_init=IsotropicGaussian(std=0.1))
+             dims=[108*5, 200, 200, 200, 48], weights_init=IsotropicGaussian(std=0.05, mean=0), biases_init=IsotropicGaussian(std=0.1))
         # mlp = SimpleRecurrent(dim=200, activation=Rectifier(), weights_init=IsotropicGaussian(std=0.1))
         y_hat = mlp.apply(x)
         # y_hat = Softmax().apply(mlp.apply(x))
@@ -45,29 +45,31 @@ class Executor:
         lost23 = MisclassificationRate().apply(y.flatten(), y_hat).astype(config.floatX)
         lost23.name = '2/3 loss'
         cg = ComputationGraph(cost)
-        # inputs = VariableFilter(roles=[WEIGHT])(cg.variables)
-        # cg = apply_dropout(cg, inputs, 0.5)
-        # while True: pass
+
+        inputs = VariableFilter(roles=[WEIGHT])(cg.variables)
+        cg = apply_dropout(cg, inputs, 0.5)
+        cost = cg.outputs[0]
+
         Ws = VariableFilter(roles=[WEIGHT])(cg.variables)
         norms = sum(w.norm(2) for w in Ws)
         norms.name = 'norms'
         mlp.initialize()
         path = pjoin(PATH['fuel'], 'train.hdf5')
-        # data = H5PYDataset(path, which_set='train', load_in_memory=True, subset=slice(0, 100000))
-        data = H5PYDataset(path, which_set='train', load_in_memory=True)
+        data = H5PYDataset(path, which_set='train', load_in_memory=True, subset=slice(0, 100000))
+        # data = H5PYDataset(path, which_set='train', load_in_memory=Tr5e)
         data_v = H5PYDataset(pjoin(PATH['fuel'], 'validate.hdf5'), which_set='validate', load_in_memory=True)
         num = data.num_examples
         data_stream = DataStream(data, iteration_scheme=ShuffledScheme(
                         num, batch_size=128))
         data_stream_v = DataStream(data_v, iteration_scheme=SequentialScheme(
                         data_v.num_examples, batch_size=128))
-        algo = GradientDescent(cost=cost, params=cg.parameters, step_rule=CompositeRule([Momentum(0.002, 0.9)]))
+        algo = GradientDescent(cost=cost, params=cg.parameters, step_rule=CompositeRule([Momentum(0.001, 0.9)]))
         monitor = DataStreamMonitoring( variables=[cost, lost01, norms],
                 data_stream=data_stream)
         monitor_v = DataStreamMonitoring( variables=[lost23],
                 data_stream=data_stream_v)
         main_loop = MainLoop(data_stream = data_stream, 
                 algorithm=algo, 
-                extensions=[monitor, monitor_v, FinishAfter(after_n_epochs=50), Printing()])
+                extensions=[monitor, monitor_v, FinishAfter(after_n_epochs=2000), Printing()])
         
         main_loop.run()

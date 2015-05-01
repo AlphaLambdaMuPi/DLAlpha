@@ -40,7 +40,7 @@ def init(valp, shuffle, normalize, prefix):
                 for i in range(len(tfet)):
                     ff = []
                     for j in range(-2, 2+1):
-                        z = (i+j) % len(tlab)
+                        z = (i+j*2) % len(tlab)
                         ff.extend(tfet[z])
                     fet.append(ff)
                     lab.append(tlab[i])
