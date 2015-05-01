@@ -30,13 +30,21 @@ def init(valp, shuffle, normalize, prefix):
         with ProgressBar(maxval=len(names)) as progbar:
             cnt = 0
             for n in names:
+                tfet = []
+                tlab = []
                 dt = f[n]
                 for fr in dt:
-                    fet.append(fr[1] + fr[2])
-                    lab.append([ph2id(fr[3])])
+                    tfet.append(fr[1] + fr[2])
+                    tlab.append([ph2id(fr[3])])
                 cnt += 1
+                for i in range(len(tfet)):
+                    ff = []
+                    for j in range(-2, 2+1):
+                        z = (i+j*2) % len(tlab)
+                        ff.extend(tfet[z])
+                    fet.append(ff)
+                    lab.append(tlab[i])
                 progbar.update(cnt)
-
 
 
     #print(fe_array[:5], np.mean(fe_array, axis=
@@ -49,7 +57,7 @@ def init(valp, shuffle, normalize, prefix):
 
     if normalize:
         train_features = ((train_features - np.mean(train_features, axis=0))
-                / np.std(train_features, axis=0))
+                / (np.std(train_features, axis=0)) + 1E-2)
 
     def save_h5py(tn, start, stop):
         cf = train_features[start:stop]
