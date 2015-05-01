@@ -46,9 +46,9 @@ class Executor:
         lost23.name = '2/3 loss'
         cg = ComputationGraph(cost)
 
-        inputs = VariableFilter(roles=[WEIGHT])(cg.variables)
-        cg = apply_dropout(cg, inputs, 0.5)
-        cost = cg.outputs[0]
+        # inputs = VariableFilter(roles=[WEIGHT])(cg.variables)
+        # cg = apply_dropout(cg, inputs, 0.5)
+        # cost = cg.outputs[0]
 
         Ws = VariableFilter(roles=[WEIGHT])(cg.variables)
         norms = sum(w.norm(2) for w in Ws)
