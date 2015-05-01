@@ -10,7 +10,7 @@ import h5py
 from fuel.datasets.hdf5 import Hdf5Dataset, H5PYDataset
 lgr = logging.getLogger()
 
-def init(valp, shuffle, normalize, prefix):
+def init(valp, shuffle, normalize, prefix, concat):
     from phomap import ph2id
     numpy_path = pjoin(PATH['data'], 'numpy')
     fuel_path = pjoin(PATH['data'], 'fuel')
@@ -30,20 +30,11 @@ def init(valp, shuffle, normalize, prefix):
         with ProgressBar(maxval=len(names)) as progbar:
             cnt = 0
             for n in names:
-                tfet = []
-                tlab = []
                 dt = f[n]
                 for fr in dt:
-                    tfet.append(fr[1] + fr[2])
-                    tlab.append([ph2id(fr[3])])
+                    fet.append(fr[1] + fr[2])
+                    lab.append([ph2id(fr[3])])
                 cnt += 1
-                for i in range(len(tfet)):
-                    ff = []
-                    for j in range(-2, 2+1):
-                        z = (i+j*2) % len(tlab)
-                        ff.extend(tfet[z])
-                    fet.append(ff)
-                    lab.append(tlab[i])
                 progbar.update(cnt)
 
 
@@ -65,9 +56,19 @@ def init(valp, shuffle, normalize, prefix):
         np.save(pjoin(numpy_path, prefix+tn+'_features.npy'), cf)
         np.save(pjoin(numpy_path, prefix+tn+'_targets.npy'), ct)
         h5 = h5py.File(pjoin(fuel_path, prefix+tn+'.hdf5'), mode='w')
+        mult = len(range(-concat[0], concat[0]+1, concat[1]))
         h5_features = h5.create_dataset(
-            'features', cf.shape, dtype='float32')
-        h5_features[...] = cf
+            'features', (cf.shape[0], cf.shape[1]*mult)
+            , dtype='float32')
+        lenf = stop - start
+        with ProgressBar(maxval=lenf) as progbar:
+            for i in range(lenf):
+                arr = []
+                for j in range(-concat[0], concat[0]+1, concat[1]):
+                    arr.extend(cf[(i-j)%lenf])
+                h5_features[i] = np.asarray(arr)
+                progbar.update(i)
+
         h5_targets = h5.create_dataset(
             'targets', ct.shape, dtype='uint8')
         h5_targets[...] = ct
@@ -110,4 +111,4 @@ def init(valp, shuffle, normalize, prefix):
 
 
 if __name__ == '__main__':
-    init(0.1, True, True, '')
+    init(0.1, True, True, 'concat', [4, 2])

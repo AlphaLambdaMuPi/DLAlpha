@@ -5,3 +5,4 @@
 *.orig
 __pycache__
 data
+data_server

@@ -28,6 +28,9 @@ class Main():
                                 help='Normalize the data', dest='normalize')
         init_fuel_parser.add_argument('-p', '--prefix', action='store', type=str, default='',
                                 help='The prefix of the file, default konkon', dest='prefix')
+        init_fuel_parser.add_argument('-c', '--concat', action='store', type=int, default='',
+                                help='The prefix of the file, default konkon', dest='concat',
+                                nargs=2)
 
         args = parser.parse_args()
 
