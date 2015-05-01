@@ -1,7 +1,7 @@
 import numpy as np
 import theano.tensor as T
 from theano import config, scan
-from blocks.bricks import MLP, Rectifier, Softmax, Linear
+from blocks.bricks import MLP, Rectifier, Softmax, Linear, Maxout
 from blocks.bricks.recurrent import *
 from blocks.initialization import IsotropicGaussian, Constant
 import fuel, blocks
@@ -23,6 +23,8 @@ from os.path import join as pjoin
 from settings import *
 from phomap import ph48239, id2ph, ph2id
 
+CONCON = 0
+
 class Executor:
     def __init__(self):
         pass
@@ -31,24 +33,29 @@ class Executor:
         x = T.matrix('features', config.floatX)
         y = T.imatrix('targets')
 
-        DIMS = [108*5, 2000, 2000, 2000, 2000, 2000, 48]
+        DIMS = [108*5, 200, 200, 200, 48]
+        NUMS = [1, 1, 1, 1, 1]
         FUNCS = [
             Rectifier(), 
             Rectifier(), 
             Rectifier(), 
-            Rectifier(), 
-            Rectifier(), 
+            # Rectifier(), 
+            # Rectifier(), 
+            # Maxout(num_pieces=5),
+            # Maxout(num_pieces=5),
+            # Maxout(num_pieces=5),
             Softmax()
         ]
 
         def lllistool(i, inp, func):
-            l = Linear(input_dim=DIMS[i], output_dim=DIMS[i+1], 
+            l = Linear(input_dim=DIMS[i], output_dim=DIMS[i+1] * NUMS[i+1], 
                        weights_init=IsotropicGaussian(std=DIMS[i]**(-0.5)), 
                        biases_init=IsotropicGaussian(std=DIMS[i]**(-0.5)),
                        name='Lin{}'.format(i))
             l.initialize()
             func.name='Fun{}'.format(i)
-            return func.apply(l.apply(inp))
+            ret = func.apply(l.apply(inp))
+            return ret
 
         oup = x
         for i in range(len(DIMS)-1):
@@ -64,15 +71,12 @@ class Executor:
         cg = apply_dropout(cg, ips[2:-2:1], 0.5)
         cost = cg.outputs[0]
 
-        cost.name = 'cost'
-
-
         Ws = VariableFilter(roles=[WEIGHT])(cg.variables)
         norms = sum(w.norm(2) for w in Ws)
         norms.name = 'norms'
         path = pjoin(PATH['fuel'], 'train.hdf5')
-        # data = H5PYDataset(path, which_set='train', load_in_memory=True, subset=slice(0, 100000))
-        data = H5PYDataset(path, which_set='train', load_in_memory=True)
+        data = H5PYDataset(path, which_set='train', load_in_memory=True, subset=slice(0, 100000))
+        # data = H5PYDataset(path, which_set='train', load_in_memory=True)
         data_v = H5PYDataset(pjoin(PATH['fuel'], 'validate.hdf5'), which_set='validate', load_in_memory=True)
         num = data.num_examples
         data_stream = DataStream(data, iteration_scheme=ShuffledScheme(
@@ -90,15 +94,14 @@ class Executor:
         cost.name = 'cost'
 
         mps = theano.shared(np.array([ph2id(ph48239(id2ph(t))) for t in range(48)]))
-        print(mps.get_value(), y.flatten(), y_hat)
         z_hat = T.argmax(y_hat, axis=1)
 
         y39,_ = scan(fn=lambda t: mps[t], outputs_info=None, sequences=[y.flatten()])
         y_hat39,_ = scan(fn=lambda t: mps[t], outputs_info=None, sequences=[z_hat])
 
-        lost01 = T.neq(y_hat39, y39).astype(config.floatX) / y39.shape[0]
+        lost01 = (T.sum(T.neq(y_hat39, y39)) / y39.shape[0]).astype(config.floatX)
         lost01.name = '0/1 loss'
-        lost23 = T.neq(y_hat39, y39).astype(config.floatX) / y39.shape[0]
+        lost23 = (T.sum(T.neq(y_hat39, y39)) / y39.shape[0]).astype(config.floatX)
         #lost23 = MisclassificationRate().apply(y39, y_hat39).astype(config.floatX)
         lost23.name = '2/3 loss'
 
@@ -107,8 +110,8 @@ class Executor:
         norms = sum(w.norm(2) for w in Ws)
         norms.name = 'norms'
         path = pjoin(PATH['fuel'], 'train.hdf5')
-        # data = H5PYDataset(path, which_set='train', load_in_memory=True, subset=slice(0, 100000))
-        data = H5PYDataset(path, which_set='train', load_in_memory=True)
+        data = H5PYDataset(path, which_set='train', load_in_memory=True, subset=slice(0, 100000))
+        # data = H5PYDataset(path, which_set='train', load_in_memory=True)
         data_v = H5PYDataset(pjoin(PATH['fuel'], 'validate.hdf5'), which_set='validate', load_in_memory=True)
         num = data.num_examples
         data_stream = DataStream(data, iteration_scheme=ShuffledScheme(
@@ -120,9 +123,13 @@ class Executor:
                 data_stream=data_stream)
         monitor_v = DataStreamMonitoring( variables=[lost23],
                 data_stream=data_stream_v)
-        plt = Plot('Dalpha', channels=[['0/1 loss', '2/3 loss']], after_epoch=True)
+        plt = Plot('Alp', channels=[['0/1 loss', '2/3 loss']], after_epoch=True)
         main_loop = MainLoop(data_stream = data_stream, 
                 algorithm=algo, 
                 extensions=[monitor, monitor_v, FinishAfter(after_n_epochs=2000), Printing(), plt])
         
         main_loop.run()
+
+        while True:
+            pass
+
