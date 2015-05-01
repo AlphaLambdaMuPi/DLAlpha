@@ -89,6 +89,7 @@ def build_shelve(name, fg):
             sh['names'] = names
     
     lg.info('Load {} frame datas, {} sencences.'.format(cnt, scnt))
+    return True
     
 
 def check_shelve():
@@ -111,6 +112,7 @@ def check_shelve():
             input()
 
             build_shelve(s[1], s[1] == 'train')
+    return True
 
 
 def check_output():

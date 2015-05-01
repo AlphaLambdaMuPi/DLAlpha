@@ -93,7 +93,6 @@ def init(valp, shuffle, normalize, prefix, concat):
     with shelve.open(SHELVE['test']) as f:
         names = f['names']
         fet = []
-        lab = []
         with ProgressBar(maxval=len(names)) as progbar:
             cnt = 0
             for n in names:
@@ -104,8 +103,18 @@ def init(valp, shuffle, normalize, prefix, concat):
                 if cnt >= 1: break
                 progbar.update(cnt)
 
-    features = np.asarray(fet, np.float32)
-    labels = np.asarray(lab, np.int32)
+    feat = np.asarray(fet, np.float32)
+    lenf = len(feat)
+    features = np.array([])
+
+    with ProgressBar(maxval=lenf) as progbar:
+        for i in range(lenf):
+            arr = []
+            for j in range(-concat[0], concat[0]+1, concat[1]):
+                arr.extend(feat[(i-j)%lenf])
+            np.vstack((features, np.asarray(arr)))
+            progbar.update(i)
+
     np.save(pjoin(numpy_path, prefix+'test_features.npy'), features)
 
 

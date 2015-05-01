@@ -26,9 +26,10 @@ class Main():
                                 help='Random shuffle the data', dest='shuffle')
         init_fuel_parser.add_argument('-n', '--normalize', action='store_true',
                                 help='Normalize the data', dest='normalize')
-        init_fuel_parser.add_argument('-p', '--prefix', action='store', type=str, default='',
-                                help='The prefix of the file, default konkon', dest='prefix')
-        init_fuel_parser.add_argument('-c', '--concat', action='store', type=int, default='',
+        init_fuel_parser.add_argument('-p', '--prefix', action='store', type=str,
+                                help='The prefix of the file, default konkon', dest='prefix',
+                                required=True)
+        init_fuel_parser.add_argument('-c', '--concat', action='store', type=int, default=(0, 1),
                                 help='The prefix of the file, default konkon', dest='concat',
                                 nargs=2)
 
