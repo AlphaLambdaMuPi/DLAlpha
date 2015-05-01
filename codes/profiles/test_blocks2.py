@@ -27,7 +27,7 @@ from profile import BaseExecutor
 class Executor(BaseExecutor):
     def __init__(self):
         NAME = 'Strange_Dropout'
-        super().__init__(name=NAME, test_file='r42test_features.npy')
+        super().__init__(name=NAME, test_file='c42_test_features.npy')
         pass
 
     def get_io(self):

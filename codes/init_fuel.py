@@ -11,6 +11,7 @@ from fuel.datasets.hdf5 import Hdf5Dataset, H5PYDataset
 lgr = logging.getLogger()
 
 def init(valp, shuffle, normalize, prefix, concat, limit):
+    limit = limit[0]
     if prefix == 'konkon' or prefix == 'concon':
         prefix = ''
     else: prefix += '_'
@@ -54,13 +55,13 @@ def init(valp, shuffle, normalize, prefix, concat, limit):
         train_features = ((train_features - np.mean(train_features, axis=0))
                 / (np.std(train_features, axis=0)) + 1E-2)
 
+    mult = len(range(-concat[0], concat[0]+1, concat[1]))
     def save_h5py(tn, start, stop):
         cf = train_features[start:stop]
         ct = train_targets[start:stop]
         np.save(pjoin(numpy_path, prefix+tn+'_features.npy'), cf)
         np.save(pjoin(numpy_path, prefix+tn+'_targets.npy'), ct)
         h5 = h5py.File(pjoin(fuel_path, prefix+tn+'.hdf5'), mode='w')
-        mult = len(range(-concat[0], concat[0]+1, concat[1]))
         h5_features = h5.create_dataset(
             'features', (cf.shape[0], cf.shape[1]*mult)
             , dtype='float32')
@@ -107,17 +108,14 @@ def init(valp, shuffle, normalize, prefix, concat, limit):
 
     feat = np.asarray(fet, np.float32)
     lenf = len(feat)
-    features = None
+    features = np.empty((feat.shape[0], feat.shape[1]*mult))
 
     with ProgressBar(maxval=lenf) as progbar:
         for i in range(lenf):
             arr = []
             for j in range(-concat[0], concat[0]+1, concat[1]):
                 arr.extend(feat[(i-j)%lenf])
-            if features is None:
-                features = np.asarray(arr)
-            else:
-                features = np.vstack((features, np.asarray(arr)))
+            features[i] = np.asarray(arr)
             progbar.update(i)
 
     np.save(pjoin(numpy_path, prefix+'test_features.npy'), features)
