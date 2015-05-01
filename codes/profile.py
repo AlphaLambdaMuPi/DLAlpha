@@ -5,13 +5,17 @@ from datetime import datetime
 import os
 
 class BaseExecutor:
-    def __init__(self, name):
+    def __init__(self, name, test_file):
         now = datetime.now()
         now_str = now.strftime('%m%d_%H%M%S')
         self.name = name + '_' + now_str
         self.path = os.path.join(PATH['output'], self.name)
         os.mkdir(self.path)
-        pass
+
+        path = os.path.join(PATH['numpy'], test_file)
+        if not os.path.isfile(path):
+            raise ValueError('Test file not found!')
+        self.test_file = path
 
     def get_io(self):
         raise NotImplementedError('self.get_io() not implemented')
@@ -37,5 +41,5 @@ class BaseExecutor:
         for r in result:
             answer.append(id2ph(r))
 
-        with open(os.path.join(self.path, 'test.out')) as f:
+        with open(os.path.join(self.path, 'test.out'), 'w') as f:
             f.write('\n'.join(answer))

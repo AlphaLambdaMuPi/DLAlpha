@@ -22,23 +22,27 @@ from blocks.extensions.monitoring import DataStreamMonitoring
 from os.path import join as pjoin
 from settings import *
 from phomap import ph48239, id2ph, ph2id
+from profile import BaseExecutor
 
-CONCON = 0
-
-class Executor:
+class Executor(BaseExecutor):
     def __init__(self):
+        NAME = 'Strange_Dropout'
+        super().__init__(name=NAME, test_file='r42test_features.npy')
         pass
+
+    def get_io(self):
+        return self.x, self.y_hat39
 
     def start(self):
         x = T.matrix('features', config.floatX)
         y = T.imatrix('targets')
 
-        DIMS = [108*5, 200, 200, 200, 48]
+        self.x = x
+
+        DIMS = [108*5, 1000, 1000, 1000, 48]
         NUMS = [1, 1, 1, 1, 1]
         FUNCS = [
-            Rectifier(), 
-            Rectifier(), 
-            Rectifier(), 
+            Rectifier(), Rectifier(), Rectifier(), 
             # Rectifier(), 
             # Rectifier(), 
             # Maxout(num_pieces=5),
@@ -68,21 +72,10 @@ class Executor:
         ips = VariableFilter(roles=[INPUT])(cg.variables)
         ops = VariableFilter(roles=[OUTPUT])(cg.variables)
         cg = apply_dropout(cg, ips[0:2:1], 0.2)
+
         cg = apply_dropout(cg, ips[2:-2:1], 0.5)
         cost = cg.outputs[0]
 
-        Ws = VariableFilter(roles=[WEIGHT])(cg.variables)
-        norms = sum(w.norm(2) for w in Ws)
-        norms.name = 'norms'
-        path = pjoin(PATH['fuel'], 'train.hdf5')
-        data = H5PYDataset(path, which_set='train', load_in_memory=True, subset=slice(0, 100000))
-        # data = H5PYDataset(path, which_set='train', load_in_memory=True)
-        data_v = H5PYDataset(pjoin(PATH['fuel'], 'validate.hdf5'), which_set='validate', load_in_memory=True)
-        num = data.num_examples
-        data_stream = DataStream(data, iteration_scheme=ShuffledScheme(
-                        num, batch_size=128))
-        data_stream_v = DataStream(data_v, iteration_scheme=SequentialScheme(
-                        data_v.num_examples, batch_size=128))
 
         cg = ComputationGraph(cost)
         ips = VariableFilter(roles=[INPUT])(cg.variables)
@@ -99,6 +92,8 @@ class Executor:
         y39,_ = scan(fn=lambda t: mps[t], outputs_info=None, sequences=[y.flatten()])
         y_hat39,_ = scan(fn=lambda t: mps[t], outputs_info=None, sequences=[z_hat])
 
+        self.y_hat39 = y_hat39
+
         lost01 = (T.sum(T.neq(y_hat39, y39)) / y39.shape[0]).astype(config.floatX)
         lost01.name = '0/1 loss'
         lost23 = (T.sum(T.neq(y_hat39, y39)) / y39.shape[0]).astype(config.floatX)
@@ -109,10 +104,10 @@ class Executor:
         Ws = VariableFilter(roles=[WEIGHT])(cg.variables)
         norms = sum(w.norm(2) for w in Ws)
         norms.name = 'norms'
-        path = pjoin(PATH['fuel'], 'train.hdf5')
-        data = H5PYDataset(path, which_set='train', load_in_memory=True, subset=slice(0, 100000))
+        path = pjoin(PATH['fuel'], 'r42train.hdf5')
+        data = H5PYDataset(path, which_set='train', load_in_memory=True)#, subset=slice(0, 100000))
         # data = H5PYDataset(path, which_set='train', load_in_memory=True)
-        data_v = H5PYDataset(pjoin(PATH['fuel'], 'validate.hdf5'), which_set='validate', load_in_memory=True)
+        data_v = H5PYDataset(pjoin(PATH['fuel'], 'r42validate.hdf5'), which_set='validate', load_in_memory=True)
         num = data.num_examples
         data_stream = DataStream(data, iteration_scheme=ShuffledScheme(
                         num, batch_size=128))
@@ -129,7 +124,4 @@ class Executor:
                 extensions=[monitor, monitor_v, FinishAfter(after_n_epochs=2000), Printing(), plt])
         
         main_loop.run()
-
-        while True:
-            pass
 

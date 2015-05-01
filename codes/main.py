@@ -32,6 +32,9 @@ class Main():
         init_fuel_parser.add_argument('-c', '--concat', action='store', type=int, default=(0, 1),
                                 help='The prefix of the file, default konkon', dest='concat',
                                 nargs=2)
+        init_fuel_parser.add_argument('-l', '--limit', action='store', type=int, default=99999999,
+                                help='The limit of rows build', dest='limit',
+                                nargs=1)
 
         args = parser.parse_args()
 
@@ -54,7 +57,12 @@ class Main():
     def run(self, profile):
         P = importlib.import_module('profiles.{}'.format(profile))
         ex = P.Executor()
-        ex.start()
+        try:
+          ex.start()
+        except KeyboardInterrupt:
+          pass
+        finally:
+          ex.end()
 
     def init_fuel(self, **kwargs):
         init_fuel.init(**kwargs)

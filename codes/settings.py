@@ -12,6 +12,7 @@ PATH['label'] = abspath(pjoin(PATH['data'], 'label'))
 PATH['phones'] = abspath(pjoin(PATH['data'], 'phones'))
 PATH['shelve'] = abspath(pjoin(PATH['data'], 'shelve'))
 PATH['fuel'] = abspath(pjoin(PATH['data'], 'fuel'))
+PATH['numpy'] = abspath(pjoin(PATH['data'], 'numpy'))
 PATH['output'] = abspath(pjoin(PATH['root'], 'output'))
 
 SHELVE = {}

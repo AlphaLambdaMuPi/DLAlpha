@@ -10,7 +10,10 @@ import h5py
 from fuel.datasets.hdf5 import Hdf5Dataset, H5PYDataset
 lgr = logging.getLogger()
 
-def init(valp, shuffle, normalize, prefix, concat):
+def init(valp, shuffle, normalize, prefix, concat, limit):
+    if prefix == 'konkon' or prefix == 'concon':
+        prefix = ''
+    else: prefix += '_'
     from phomap import ph2id
     numpy_path = pjoin(PATH['data'], 'numpy')
     fuel_path = pjoin(PATH['data'], 'fuel')
@@ -27,7 +30,7 @@ def init(valp, shuffle, normalize, prefix, concat):
         if shuffle: random.shuffle(names)
         fet = []
         lab = []
-        with ProgressBar(maxval=len(names)) as progbar:
+        with ProgressBar(maxval=min(len(names), limit)) as progbar:
             cnt = 0
             for n in names:
                 dt = f[n]
@@ -35,6 +38,7 @@ def init(valp, shuffle, normalize, prefix, concat):
                     fet.append(fr[1] + fr[2])
                     lab.append([ph2id(fr[3])])
                 cnt += 1
+                if cnt >= limit: break
                 progbar.update(cnt)
 
 
@@ -99,20 +103,21 @@ def init(valp, shuffle, normalize, prefix, concat):
                 dt = f[n]
                 for fr in dt:
                     fet.append(fr[1] + fr[2])
-                cnt += 1
-                if cnt >= 1: break
                 progbar.update(cnt)
 
     feat = np.asarray(fet, np.float32)
     lenf = len(feat)
-    features = np.array([])
+    features = None
 
     with ProgressBar(maxval=lenf) as progbar:
         for i in range(lenf):
             arr = []
             for j in range(-concat[0], concat[0]+1, concat[1]):
                 arr.extend(feat[(i-j)%lenf])
-            np.vstack((features, np.asarray(arr)))
+            if features is None:
+                features = np.asarray(arr)
+            else:
+                features = np.vstack((features, np.asarray(arr)))
             progbar.update(i)
 
     np.save(pjoin(numpy_path, prefix+'test_features.npy'), features)
