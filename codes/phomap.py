@@ -30,5 +30,8 @@ def id2ph(p):
 def ph49238(p):
     return phomap[p][1]
 
+def ph48239(p):
+    return phomap[p][1]
+
 def get_maps():
     return phomap, invphomap
