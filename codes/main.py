@@ -33,8 +33,7 @@ class Main():
                                 help='The prefix of the file, default konkon', dest='concat',
                                 nargs=2)
         init_fuel_parser.add_argument('-l', '--limit', action='store', type=int, default=99999999,
-                                help='The limit of rows build', dest='limit',
-                                nargs=1)
+                                help='The limit of rows build', dest='limit')
 
         args = parser.parse_args()
 

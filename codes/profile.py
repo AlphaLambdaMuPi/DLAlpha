@@ -1,4 +1,5 @@
 import theano
+from theano import config
 import numpy as np
 from settings import *
 from datetime import datetime
@@ -29,17 +30,19 @@ class BaseExecutor:
         self.predict_test()
 
     def predict_test(self):
-        x, y_hat = self.get_io()
-        fun = theano.function([x], y_hat)
+        x, y = self.get_io()
+        fun = theano.function([x], y)
 
-        test_feature = np.load(self.test_file)
+        test_feature = np.load(self.test_file).astype(config.floatX)
         result = fun(test_feature)
+        np.save(os.path.join(self.path, 'result.npy'), result)
+        argm = np.argmax(result, axis=1)
 
-        from phomap import id2ph
+        #from phomap import id2ph
 
-        answer = []
-        for r in result:
-            answer.append(id2ph(r))
+        #answer = []
+        #for r in argm:
+            #answer.append(id2ph(r))
 
-        with open(os.path.join(self.path, 'test.out'), 'w') as f:
-            f.write('\n'.join(answer))
+        #with open(os.path.join(self.path, 'test.out'), 'w') as f:
+            #f.write('\n'.join(answer))

@@ -2,7 +2,7 @@ import numpy as np
 import pickle
 import theano.tensor as T
 from theano import config, scan
-from blocks.bricks import MLP, Rectifier, Softmax, Linear, Maxout
+from blocks.bricks import MLP, Rectifier, Softmax, Linear, Maxout, Sigmoid
 from blocks.bricks.recurrent import *
 from blocks.initialization import IsotropicGaussian, Constant
 import fuel, blocks
@@ -14,7 +14,7 @@ from blocks.algorithms import *
 from blocks.bricks import WEIGHT
 from blocks.roles import INPUT, DROPOUT, PARAMETER, OUTPUT
 from blocks.filter import VariableFilter
-from blocks.bricks.cost import CategoricalCrossEntropy, MisclassificationRate
+from blocks.bricks.cost import CategoricalCrossEntropy, MisclassificationRate, SquaredError
 from blocks.graph import ComputationGraph, apply_dropout
 from blocks.main_loop import MainLoop
 from blocks.extensions import FinishAfter, Printing
@@ -27,8 +27,8 @@ from profile import BaseExecutor
 
 class Executor(BaseExecutor):
     def __init__(self):
-        NAME = 'Strange_Dropout'
-        super().__init__(name=NAME, test_file='c42_test_features.npy')
+        NAME = 'Border'
+        super().__init__(name=NAME, test_file='border_test_features.npy')
         pass
 
     def get_io(self):
@@ -36,17 +36,17 @@ class Executor(BaseExecutor):
 
     def start(self):
         x = T.matrix('features', config.floatX)
-        y = T.imatrix('targets')
+        y = T.matrix('targets', config.floatX)
 
         self.x = x
 
-        DIMS = [108*5, 1000, 1000, 1000, 48]
+        DIMS = [108*7, 1000, 1000, 200, 1]
         NUMS = [1, 1, 1, 1, 1]
         FUNCS = [
             Rectifier, 
             Rectifier, 
             Rectifier,
-            Softmax,
+            Sigmoid,
         ]
 
         def lllistool(i, inp, func):
@@ -68,54 +68,66 @@ class Executor(BaseExecutor):
             oup = lllistool(i, oup, FUNCS[i])
         y_hat = oup
 
-        cost = CategoricalCrossEntropy().apply(y.flatten(), y_hat).astype(config.floatX)
+        cost = SquaredError().apply(y, y_hat).astype(config.floatX)
 
 
         cg = ComputationGraph(cost)
-        orig_cg = cg
-        ips = VariableFilter(roles=[INPUT])(cg.variables)
-        ops = VariableFilter(roles=[OUTPUT])(cg.variables)
-        cg = apply_dropout(cg, ips[0:2:1], 0.2)
-        cg = apply_dropout(cg, ips[2:-2:1], 0.5)
+        #orig_cg = cg
+        #ips = VariableFilter(roles=[INPUT])(cg.variables)
+        #ops = VariableFilter(roles=[OUTPUT])(cg.variables)
+        #cg = apply_dropout(cg, ips[0:2:1], 0.2)
+        #cg = apply_dropout(cg, ips[2:-2:1], 0.5)
         cost = cg.outputs[0]
 
         cost.name = 'cost'
 
-        mps = theano.shared(np.array([ph2id(ph48239(id2ph(t))) for t in range(48)]))
-        z_hat = T.argmax(y_hat, axis=1)
+        #mps = theano.shared(np.array([ph2id(ph48239(id2ph(t))) for t in range(48)]))
+        #z_hat = T.argmax(y_hat, axis=1)
 
-        y39,_ = scan(fn=lambda t: mps[t], outputs_info=None, sequences=[y.flatten()])
-        y_hat39,_ = scan(fn=lambda t: mps[t], outputs_info=None, sequences=[z_hat])
+        #y39,_ = scan(fn=lambda t: mps[t], outputs_info=None, sequences=[y.flatten()])
+        #y_hat39,_ = scan(fn=lambda t: mps[t], outputs_info=None, sequences=[z_hat])
 
-        self.y_hat39 = y_hat39
+        self.y_hat39 = y_hat
 
-        lost01 = (T.sum(T.neq(y_hat39, y39)) / y39.shape[0]).astype(config.floatX)
-        lost01.name = '0/1 loss'
-        lost23 = (T.sum(T.neq(y_hat39, y39)) / y39.shape[0]).astype(config.floatX)
-        lost23.name = '2/3 loss'
+        #lost01 = (T.sum(T.neq(y_hat39, y39)) / y39.shape[0]).astype(config.floatX)
+        #lost01.name = '0/1 loss'
+        #lost23 = (T.sum(T.neq(y_hat39, y39)) / y39.shape[0]).astype(config.floatX)
+        #lost23.name = '2/3 loss'
 
 
         Ws = VariableFilter(roles=[WEIGHT])(cg.variables)
         norms = sum(w.norm(2) for w in Ws)
         norms.name = 'norms'
-        path = pjoin(PATH['fuel'], 'r42train.hdf5')
+        path = pjoin(PATH['fuel'], 'border_train.hdf5')
         data = H5PYDataset(path, which_set='train', load_in_memory=True)#, subset=slice(0, 100000))
         # data = H5PYDataset(path, which_set='train', load_in_memory=True)
-        data_v = H5PYDataset(pjoin(PATH['fuel'], 'r42validate.hdf5'), which_set='validate', load_in_memory=True)
+        data_v = H5PYDataset(pjoin(PATH['fuel'], 'border_validate.hdf5'), which_set='validate', load_in_memory=True)
         num = data.num_examples
         data_stream = DataStream(data, iteration_scheme=ShuffledScheme(
                         num, batch_size=128))
         data_stream_v = DataStream(data_v, iteration_scheme=SequentialScheme(
                         data_v.num_examples, batch_size=128))
-        algo = GradientDescent(cost=cost, params=cg.parameters, step_rule=CompositeRule([Momentum(0.002, 0.9)]))
-        monitor = DataStreamMonitoring( variables=[cost, lost01, norms],
+        #algo = GradientDescent(cost=cost, params=cg.parameters, step_rule=CompositeRule([Momentum(0.002, 0.9)]))
+        algo = GradientDescent(cost=cost, params=cg.parameters, step_rule=CompositeRule([AdaDelta()]))
+        monitor = DataStreamMonitoring( variables=[cost, norms],
                 data_stream=data_stream)
-        monitor_v = DataStreamMonitoring( variables=[lost23],
-                data_stream=data_stream_v)
-        plt = Plot('Alp', channels=[['0/1 loss', '2/3 loss']], after_epoch=True)
+        monitor_v = DataStreamMonitoring( variables=[cost],
+                data_stream=data_stream_v, prefix="val")
+        #plt = Plot('Alp', channels=[['0/1 loss', '2/3 loss']], after_epoch=True)
         main_loop = MainLoop(data_stream = data_stream, 
                 algorithm=algo, 
-                extensions=[monitor, monitor_v, FinishAfter(after_n_epochs=2000), Printing(), plt])
+                extensions=[monitor, monitor_v, FinishAfter(after_n_epochs=2000), Printing()])
         
         main_loop.run()
+
+    def end(self):
+        x, y_hat = self.get_io()
+        fun = theano.function([x], y_hat)
+
+        test_feature = np.load(self.test_file).astype(config.floatX)
+        result = fun(test_feature)
+
+        answer = [str(r) for r in result]
+        with open(os.path.join(self.path, 'test.out'), 'w') as f:
+            f.write('\n'.join(answer))
 
