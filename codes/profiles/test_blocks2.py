@@ -1,4 +1,5 @@
 import numpy as np
+import pickle
 import theano.tensor as T
 from theano import config, scan
 from blocks.bricks import MLP, Rectifier, Softmax, Linear, Maxout
@@ -42,13 +43,18 @@ class Executor(BaseExecutor):
         DIMS = [108*5, 1000, 1000, 1000, 48]
         NUMS = [1, 1, 1, 1, 1]
         FUNCS = [
-            Rectifier(), Rectifier(), Rectifier(), 
             # Rectifier(), 
             # Rectifier(), 
+            # Rectifier(), 
+            # Rectifier(), 
+            # Rectifier(), 
             # Maxout(num_pieces=5),
             # Maxout(num_pieces=5),
             # Maxout(num_pieces=5),
-            Softmax()
+            # SimpleRecurrent,
+            # SimpleRecurrent,
+            # SimpleRecurrent,
+            Softmax
         ]
 
         def lllistool(i, inp, func):
@@ -58,7 +64,11 @@ class Executor(BaseExecutor):
                        name='Lin{}'.format(i))
             l.initialize()
             func.name='Fun{}'.format(i)
-            ret = func.apply(l.apply(inp))
+            if func == SimpleRecurrent:
+                gong = func(dim=DIMS[i+1], activation=Rectifier(), weights_init=IsotropicGaussian(std=(DIMS[i]+DIMS[i+1])**(-0.5)))
+            else:
+                gong = func()
+            ret = gong.apply(l.apply(inp))
             return ret
 
         oup = x
@@ -69,6 +79,7 @@ class Executor(BaseExecutor):
         cost = CategoricalCrossEntropy().apply(y.flatten(), y_hat).astype(config.floatX)
 
         cg = ComputationGraph(cost)
+<<<<<<< HEAD
         ips = VariableFilter(roles=[INPUT])(cg.variables)
         ops = VariableFilter(roles=[OUTPUT])(cg.variables)
         cg = apply_dropout(cg, ips[0:2:1], 0.2)
@@ -78,6 +89,9 @@ class Executor(BaseExecutor):
 
 
         cg = ComputationGraph(cost)
+=======
+        orig_cg = cg
+>>>>>>> Alpa
         ips = VariableFilter(roles=[INPUT])(cg.variables)
         ops = VariableFilter(roles=[OUTPUT])(cg.variables)
         cg = apply_dropout(cg, ips[0:2:1], 0.2)
@@ -125,3 +139,11 @@ class Executor(BaseExecutor):
         
         main_loop.run()
 
+<<<<<<< HEAD
+=======
+        pfile = open('beta.pkl', 'wb')
+        pickle.dump(orig_cg, pfile)
+        pickle.dump(cg, pfile)
+        pfile.close()
+
+>>>>>>> Alpa
