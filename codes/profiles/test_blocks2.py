@@ -79,19 +79,7 @@ class Executor(BaseExecutor):
         cost = CategoricalCrossEntropy().apply(y.flatten(), y_hat).astype(config.floatX)
 
         cg = ComputationGraph(cost)
-<<<<<<< HEAD
-        ips = VariableFilter(roles=[INPUT])(cg.variables)
-        ops = VariableFilter(roles=[OUTPUT])(cg.variables)
-        cg = apply_dropout(cg, ips[0:2:1], 0.2)
-
-        cg = apply_dropout(cg, ips[2:-2:1], 0.5)
-        cost = cg.outputs[0]
-
-
-        cg = ComputationGraph(cost)
-=======
         orig_cg = cg
->>>>>>> Alpa
         ips = VariableFilter(roles=[INPUT])(cg.variables)
         ops = VariableFilter(roles=[OUTPUT])(cg.variables)
         cg = apply_dropout(cg, ips[0:2:1], 0.2)
@@ -139,11 +127,7 @@ class Executor(BaseExecutor):
         
         main_loop.run()
 
-<<<<<<< HEAD
-=======
         pfile = open('beta.pkl', 'wb')
         pickle.dump(orig_cg, pfile)
         pickle.dump(cg, pfile)
         pfile.close()
-
->>>>>>> Alpa
