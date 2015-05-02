@@ -36,17 +36,17 @@ class Executor(BaseExecutor):
 
     def start(self):
         x = T.matrix('features', config.floatX)
-        y = T.matrix('targets', config.floatX)
+        y = T.imatrix('targets')
 
         self.x = x
 
-        DIMS = [108*7, 1000, 1000, 200, 1]
+        DIMS = [108*7, 1000, 1000, 200, 2]
         NUMS = [1, 1, 1, 1, 1]
         FUNCS = [
             Rectifier, 
             Rectifier, 
             Rectifier,
-            Sigmoid,
+            Softmax,
         ]
 
         def lllistool(i, inp, func):
@@ -68,7 +68,12 @@ class Executor(BaseExecutor):
             oup = lllistool(i, oup, FUNCS[i])
         y_hat = oup
 
-        cost = SquaredError().apply(y, y_hat).astype(config.floatX)
+        cost = CategoricalCrossEntropy().apply(y.flatten(), y_hat).astype(config.floatX)
+        cost.name = 'cost'
+        lost01 = MisclassificationRate().apply(y.flatten(), y_hat).astype(config.floatX)
+        lost01.name = 'lost1'
+        lost23 = MisclassificationRate().apply(y.flatten(), y_hat).astype(config.floatX)
+        lost23.name = 'lost2'
 
 
         cg = ComputationGraph(cost)
@@ -109,9 +114,9 @@ class Executor(BaseExecutor):
                         data_v.num_examples, batch_size=128))
         #algo = GradientDescent(cost=cost, params=cg.parameters, step_rule=CompositeRule([Momentum(0.002, 0.9)]))
         algo = GradientDescent(cost=cost, params=cg.parameters, step_rule=CompositeRule([AdaDelta()]))
-        monitor = DataStreamMonitoring( variables=[cost, norms],
+        monitor = DataStreamMonitoring( variables=[cost, norms, lost01],
                 data_stream=data_stream)
-        monitor_v = DataStreamMonitoring( variables=[cost],
+        monitor_v = DataStreamMonitoring( variables=[cost, lost01],
                 data_stream=data_stream_v, prefix="val")
         #plt = Plot('Alp', channels=[['0/1 loss', '2/3 loss']], after_epoch=True)
         main_loop = MainLoop(data_stream = data_stream, 
@@ -120,14 +125,17 @@ class Executor(BaseExecutor):
         
         main_loop.run()
 
+
     def end(self):
         x, y_hat = self.get_io()
         fun = theano.function([x], y_hat)
 
         test_feature = np.load(self.test_file).astype(config.floatX)
         result = fun(test_feature)
+        argm = np.argmax(result, axis=1)
+        np.save('argm.npy', argm)
 
-        answer = [str(r) for r in result]
-        with open(os.path.join(self.path, 'test.out'), 'w') as f:
-            f.write('\n'.join(answer))
+        #answer = [str(r) for r in result]
+        #with open(os.path.join(self.path, 'test.out'), 'w') as f:
+            #f.write('\n'.join(answer))
 

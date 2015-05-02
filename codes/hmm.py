@@ -46,7 +46,7 @@ def hmm(probs, mat):
     return res[::-1]
 
 def main():
-    path = '../output/Strange_Dropout_0502_121320/result.npy'
+    path = '../output/Strange_Dropout_0502_145049/result.npy'
     prob = np.load(path)
     mat = np.load('prob.npy')
     mat = mat / np.sum(mat, axis=1)[:,None]
@@ -54,7 +54,7 @@ def main():
 
     from phomap import id2ph, ph49238, ph2id
     from utils import answer
-    with shelve.open(SHELVE['test']) as sh, open('res3.out', 'w') as f:
+    with shelve.open(SHELVE['test']) as sh, open('res4.out', 'w') as f:
         f.write('id,prediction\n')
         names = sh['names']
 
@@ -69,21 +69,22 @@ def main():
                 lastlab = -1
                 i = 0
                 qq = []
+                q = 0
                 while i < len(r):
                     j = i
                     while j < len(r) and r[j] == r[i]:
                         j += 1
-                    if j - i > 1 or lastlab == -1:
-                        #qq.append(id2ph(r[i]))
-                        for k in range(i, j):
-                            f.write('{}_{},{}\n'.format(name, k+1, ph49238(id2ph(r[k]))))
+                    if j - i > 2 or lastlab == -1:
+                        qq.append(id2ph(r[i]))
+                        #for k in range(i, j):
+                            #f.write('{}_{},{}\n'.format(name, k+1, ph49238(id2ph(r[k]))))
                         lastlab = r[i]
                     else:
-                        #pass
-                        for k in range(i, j):
-                            f.write('{}_{},{}\n'.format(name, k+1, ph49238(id2ph(lastlab))))
+                        pass
+                        #for k in range(i, j):
+                            #f.write('{}_{},{}\n'.format(name, k+1, ph49238(id2ph(lastlab))))
                     i = j
-                #f.write('{},{}\n'.format(name, answer(qq)))
+                f.write('{},{}\n'.format(name, answer(qq)))
                 acc += curl
                 cnt += 1
                 prog.update(cnt)

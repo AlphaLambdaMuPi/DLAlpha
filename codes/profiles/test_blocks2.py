@@ -27,7 +27,7 @@ from profile import BaseExecutor
 
 class Executor(BaseExecutor):
     def __init__(self):
-        NAME = 'Strange_Dropout'
+        NAME = 'KonKon'
         super().__init__(name=NAME, test_file='c42_test_features.npy')
         pass
 
@@ -40,7 +40,7 @@ class Executor(BaseExecutor):
 
         self.x = x
 
-        DIMS = [108*5, 1000, 1000, 1000, 48]
+        DIMS = [108*5, 1000, 1000, 1000, 49]
         NUMS = [1, 1, 1, 1, 1]
         FUNCS = [
             Rectifier, 
@@ -68,7 +68,8 @@ class Executor(BaseExecutor):
             oup = lllistool(i, oup, FUNCS[i])
         y_hat = oup
 
-        cost = CategoricalCrossEntropy().apply(y.flatten(), y_hat).astype(config.floatX)
+        cost = (CategoricalCrossEntropy().apply(y.flatten(), y_hat[:,:48]).astype(config.floatX) - 
+            T.sum(T.log((y_hat[:,48]).astype(config.floatX)).astype(config.floatX)).astype(config.floatX) / (y_hat.shape[0] * 3.)).astype(config.floatX)
 
 
         cg = ComputationGraph(cost)
@@ -81,7 +82,7 @@ class Executor(BaseExecutor):
 
         cost.name = 'cost'
 
-        mps = theano.shared(np.array([ph2id(ph48239(id2ph(t))) for t in range(48)]))
+        mps = theano.shared(np.array([ph2id(ph48239(id2ph(t))) for t in range(48)] + [-1]))
         z_hat = T.argmax(y_hat, axis=1)
 
         y39,_ = scan(fn=lambda t: mps[t], outputs_info=None, sequences=[y.flatten()])
@@ -98,10 +99,10 @@ class Executor(BaseExecutor):
         Ws = VariableFilter(roles=[WEIGHT])(cg.variables)
         norms = sum(w.norm(2) for w in Ws)
         norms.name = 'norms'
-        path = pjoin(PATH['fuel'], 'r42train.hdf5')
+        path = pjoin(PATH['fuel'], 'c42_train.hdf5')
         data = H5PYDataset(path, which_set='train', load_in_memory=True)#, subset=slice(0, 100000))
         # data = H5PYDataset(path, which_set='train', load_in_memory=True)
-        data_v = H5PYDataset(pjoin(PATH['fuel'], 'r42validate.hdf5'), which_set='validate', load_in_memory=True)
+        data_v = H5PYDataset(pjoin(PATH['fuel'], 'c42_validate.hdf5'), which_set='validate', load_in_memory=True)
         num = data.num_examples
         data_stream = DataStream(data, iteration_scheme=ShuffledScheme(
                         num, batch_size=128))
@@ -118,4 +119,22 @@ class Executor(BaseExecutor):
                 extensions=[monitor, monitor_v, FinishAfter(after_n_epochs=2000), Printing(), plt])
         
         main_loop.run()
+
+    def end(self):
+        x, y = self.get_io()
+        fun = theano.function([x], y)
+
+        test_feature = np.load(self.test_file).astype(config.floatX)
+        result = fun(test_feature)
+        np.save(os.path.join(self.path, 'result.npy'), result)
+        argm = np.argmax(result, axis=1)
+
+        #from phomap import id2ph
+
+        #answer = []
+        #for r in argm:
+            #answer.append(id2ph(r))
+
+        ##with open(os.path.join(self.path, 'test.out'), 'w') as f:
+            ##f.write('\n'.join(answer))
 

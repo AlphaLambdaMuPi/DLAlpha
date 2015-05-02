@@ -75,8 +75,8 @@ class Executor(BaseExecutor):
         orig_cg = cg
         ips = VariableFilter(roles=[INPUT])(cg.variables)
         ops = VariableFilter(roles=[OUTPUT])(cg.variables)
-        cg = apply_dropout(cg, ips[0:2:1], 0.2)
-        cg = apply_dropout(cg, ips[2:-2:1], 0.5)
+        cg = apply_dropout(cg, ips[0:2:1], 0.3)
+        cg = apply_dropout(cg, ips[2:-2:1], 0.6)
         cost = cg.outputs[0]
 
         cost.name = 'cost'

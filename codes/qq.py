@@ -22,7 +22,7 @@ def init(valp, shuffle, normalize, prefix, concat, limit):
             lgr.info('Path {} not found, mkdir!'.format(p))
             os.mkdir(p)
 
-    points = [(-2, 0.3), (-1, 1), (0, 1), (1, 0.3)]
+    points = [(-1, 1), (0, 1)]
 
     lgr.info('start building numpy datas, becareful for swap out! (need 4G)')
     lgr.info('Build train data.')
@@ -39,27 +39,31 @@ def init(valp, shuffle, normalize, prefix, concat, limit):
                     fet.append(fr[1] + fr[2])
                 labs = [fr[3] for fr in dt]
                 labsl = len(labs)
-                for i in range(labsl):
-                    pt = 0.0
-                    for pr in points:
-                        st, ed = i+pr[0], i+pr[0]+1
-                        if (st >= 0 and ed < labsl
-                            and labs[st] != labs[ed]):
-                            pt += pr[1]
-                    lab.append([pt])
+                i = 0
+                while i < labsl:
+                    j = i
+                    while j < labsl and labs[i] == labs[j]:
+                        j += 1
+                    ql = j - i
+                    getl = max(ql//5, 1)
+                    a1 = [[1]] * getl if i != 0 else [[0]]*getl
+                    a2 = [[0]] * (ql - getl * 2)
+                    a3 = [[1]] * getl if j != labsl else [[0]]*getl
+                    lab.extend(a1+a2+a3)
+                    i = j
                 cnt += 1
                 if cnt >= limit: break
                 progbar.update(cnt)
 
 
-    #print(lab)
+    print(lab)
     #print(fe_array[:5], np.mean(fe_array, axis=
 
     tr_n = int(len(fet) * (1 - valp))
 
     
     train_features = np.asarray(fet, np.float32)
-    train_targets = np.asarray(lab, np.float32)
+    train_targets = np.asarray(lab, np.int64)
 
     if normalize:
         train_features = ((train_features - np.mean(train_features, axis=0))
@@ -133,4 +137,4 @@ def init(valp, shuffle, normalize, prefix, concat, limit):
 
 
 if __name__ == '__main__':
-    init(0.1, True, True, 'border', [3, 1], 500)
+    init(0.1, True, True, 'border', [3, 1], 2000)
