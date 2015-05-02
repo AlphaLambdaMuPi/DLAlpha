@@ -182,17 +182,20 @@ class Executor:
         # DIMS = [108*5, 48]
         # NUMS = [1, 1]
         FUNCS = [
-            Rectifier, 
-            Rectifier, 
-            Rectifier, 
             # Rectifier, 
             # Rectifier, 
+            # Rectifier, 
+            # Rectifier, 
+            # Rectifier, 
             # Maxout(num_pieces=5),
             # Maxout(num_pieces=5),
             # Maxout(num_pieces=5),
-            # SimpleRecurrent,
-            # SimpleRecurrent,
-            # SimpleRecurrent,
+            SimpleRecurrent,
+            SimpleRecurrent,
+            SimpleRecurrent,
+            # LSTM,
+            # LSTM,
+            # LSTM,
 
             # SequenceGenerator,
 
@@ -213,6 +216,15 @@ class Executor:
                 gong = func(dim=DIMS[i+1], activation=Rectifier(), weights_init=IsotropicGaussian(std=sdim**(-0.5)))
                 gong.initialize()
                 ret = gong.apply(l.apply(inp))
+            elif func == LSTM:
+                gong = func(dim=DIMS[i+1], activation=Tanh(), weights_init=IsotropicGaussian(std=sdim**(-0.5)))
+                gong.initialize()
+                print(inp)
+                ret, _ = gong.apply(
+                    l.apply(inp), 
+                    T.zeros((inp.shape[1], DIMS[i+1])),
+                    T.zeros((inp.shape[1], DIMS[i+1])),
+                )
             elif func == SequenceGenerator:
                 gong = func(
                     readout=None, 
@@ -238,9 +250,9 @@ class Executor:
 
         # cost = CategoricalCrossEntropy().apply(y, y_hat).astype(config.floatX)
 
-        j, wlh = Yimumu(y_hat, y)
-        cost = CategoricalCrossEntropy().apply(y_rsp, sfmx) + j
-        # cost = CategoricalCrossEntropy().apply(y_rsp, sfmx)
+        # j, wlh = Yimumu(y_hat, y)
+        # cost = CategoricalCrossEntropy().apply(y_rsp, sfmx) + j
+        cost = CategoricalCrossEntropy().apply(y_rsp, sfmx)
         cost = cost.astype(config.floatX)
 
         cg = ComputationGraph(cost)
@@ -255,8 +267,8 @@ class Executor:
         cost.name = 'cost'
 
         mps = theano.shared(np.array([ph2id(ph48239(id2ph(t))) for t in range(48)]))
-        # z_hat = T.argmax(yh_dsf_rsp, axis=1)
-        z_hat = Yimumu_Decode()(y_hat, wlh)
+        z_hat = T.argmax(yh_dsf_rsp, axis=1)
+        # z_hat = Yimumu_Decode()(y_hat, wlh)
 
         y39,_ = scan(fn=lambda t: mps[t], outputs_info=None, sequences=[y_dsf_rsp])
         y_hat39,_ = scan(fn=lambda t: mps[t], outputs_info=None, sequences=[z_hat])
@@ -273,7 +285,7 @@ class Executor:
 
 
         Ws = cg.parameters
-        Ws = Ws + [wlh]
+        # Ws = Ws + [wlh]
         print(list(Ws))
         norms = sum(w.norm(2) for w in Ws)
         norms = norms.astype(config.floatX)
@@ -295,7 +307,7 @@ class Executor:
                 data_stream=data_stream)
         monitor_v = DataStreamMonitoring( variables=[lost23, edit23],
                 data_stream=data_stream_v)
-        plt = Plot('AlpEditHMMDropout', channels=[['0/1 loss', '2/3 loss'], ['0/1 edit', '2/3 edit']], after_epoch=True)
+        plt = Plot('AlpEditLSTM', channels=[['0/1 loss', '2/3 loss'], ['0/1 edit', '2/3 edit']], after_epoch=True)
         main_loop = MainLoop(data_stream = data_stream, 
                 algorithm=algo, 
                 extensions=[monitor, monitor_v, FinishAfter(after_n_epochs=2000), Printing(), plt])
@@ -304,7 +316,7 @@ class Executor:
 
         pfile = open('beta.pkl', 'wb')
         pickle.dump(orig_cg, pfile)
-        pickle.dump(wlh, pfile)
+        # pickle.dump(wlh, pfile)
         pfile.close()
 
     def end(self):
