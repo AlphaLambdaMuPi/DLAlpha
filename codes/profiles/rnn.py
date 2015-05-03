@@ -92,6 +92,15 @@ def Yimumu(inp, y):
     j2 = HMM_RATIO * T.sum(s2) / inp.shape[1] / inp.shape[0]
     return j2, wlh
 
+def CTC_cost(y, yh):
+    yy = y.dimshuffle(1, 0)
+    yyh = yh.dimshuffle(1, 0, 2)
+    yyh = yyh - T.log(T.sum(T.exp(yyh, axis=2)))
+    
+    def func(al, be, sm):
+        def func2():
+            pass
+
 class Yimumu_Decode(theano.Op):
     # Properties attribute
     __props__ = ()
@@ -164,6 +173,19 @@ class EditDistance(theano.Op):
 
         output_storage[0][0] = np.array(ans).astype('float32')
 
+class TrimOp(theano.Op):
+    # Properties attribute
+    __props__ = ()
+
+    def make_node(self, y):
+        y = theano.tensor.as_tensor_variable(y)
+        return theano.Apply(self, [y], [y.type()])
+
+    # Python implementation:
+    def perform(self, node, inputs_storage, output_storage):
+        y = inputs_storage[0]
+        output_storage[0][0] = np.array(trim(y)).astype('int32')
+
 class Executor:
     def __init__(self):
         pass
@@ -177,22 +199,22 @@ class Executor:
         # x = xx[:zm].reshape((zm//16, 16, xx.shape[1]))
         # y = yy[:zm].reshape((zm//16, 16))
 
-        DIMS = [108*5, 200, 200, 200, 48]
-        NUMS = [1, 1, 1, 1, 1]
+        DIMS = [108*5, 2000, 2000, 2000, 2000, 48]
+        NUMS = [1, 1, 1, 1, 1, 1]
         # DIMS = [108*5, 48]
         # NUMS = [1, 1]
         FUNCS = [
-            # Rectifier, 
-            # Rectifier, 
-            # Rectifier, 
-            # Rectifier, 
+            Rectifier, 
+            Rectifier, 
+            Rectifier, 
+            Rectifier, 
             # Rectifier, 
             # Maxout(num_pieces=5),
             # Maxout(num_pieces=5),
             # Maxout(num_pieces=5),
-            SimpleRecurrent,
-            SimpleRecurrent,
-            SimpleRecurrent,
+            # SimpleRecurrent,
+            # SimpleRecurrent,
+            # SimpleRecurrent,
             # LSTM,
             # LSTM,
             # LSTM,
@@ -250,9 +272,10 @@ class Executor:
 
         # cost = CategoricalCrossEntropy().apply(y, y_hat).astype(config.floatX)
 
-        # j, wlh = Yimumu(y_hat, y)
-        # cost = CategoricalCrossEntropy().apply(y_rsp, sfmx) + j
-        cost = CategoricalCrossEntropy().apply(y_rsp, sfmx)
+        j, wlh = Yimumu(y_hat, y)
+        cost = CategoricalCrossEntropy().apply(y_rsp, sfmx) + j
+        # cost = CategoricalCrossEntropy().apply(y_rsp, sfmx)
+        # cost = CTC_cost(y, y_hat)
         cost = cost.astype(config.floatX)
 
         cg = ComputationGraph(cost)
@@ -260,15 +283,15 @@ class Executor:
         ips = VariableFilter(roles=[INPUT])(cg.variables)
         ops = VariableFilter(roles=[OUTPUT])(cg.variables)
         # print(ips, ops)
-        # cg = apply_dropout(cg, ips[0:2:1], 0.2)
-        # cg = apply_dropout(cg, ips[2:-2:1], 0.5)
-        # cost = cg.outputs[0].astype(config.floatX)
+        cg = apply_dropout(cg, ips[0:2:1], 0.2)
+        cg = apply_dropout(cg, ips[2:-2:1], 0.5)
+        cost = cg.outputs[0].astype(config.floatX)
 
         cost.name = 'cost'
 
         mps = theano.shared(np.array([ph2id(ph48239(id2ph(t))) for t in range(48)]))
-        z_hat = T.argmax(yh_dsf_rsp, axis=1)
-        # z_hat = Yimumu_Decode()(y_hat, wlh)
+        # z_hat = T.argmax(yh_dsf_rsp, axis=1)
+        z_hat = Yimumu_Decode()(y_hat, wlh)
 
         y39,_ = scan(fn=lambda t: mps[t], outputs_info=None, sequences=[y_dsf_rsp])
         y_hat39,_ = scan(fn=lambda t: mps[t], outputs_info=None, sequences=[z_hat])
@@ -285,14 +308,14 @@ class Executor:
 
 
         Ws = cg.parameters
-        # Ws = Ws + [wlh]
+        Ws = Ws + [wlh]
         print(list(Ws))
         norms = sum(w.norm(2) for w in Ws)
         norms = norms.astype(config.floatX)
         norms.name = 'norms'
         path = pjoin(PATH['fuel'], 'train.hdf5')
-        data = H5PYDataset(path, which_set='train', load_in_memory=True, subset=slice(0, 100000))
-        # data = H5PYDataset(path, which_set='train', load_in_memory=True)
+        # data = H5PYDataset(path, which_set='train', load_in_memory=True, subset=slice(0, 100000))
+        data = H5PYDataset(path, which_set='train', load_in_memory=True)
         data_v = H5PYDataset(pjoin(PATH['fuel'], 'validate.hdf5'), which_set='validate', load_in_memory=True)
         num = data.num_examples
         data_stream = DataStream(data, iteration_scheme=SequentialScheme(
@@ -307,16 +330,16 @@ class Executor:
                 data_stream=data_stream)
         monitor_v = DataStreamMonitoring( variables=[lost23, edit23],
                 data_stream=data_stream_v)
-        plt = Plot('AlpEditLSTM', channels=[['0/1 loss', '2/3 loss'], ['0/1 edit', '2/3 edit']], after_epoch=True)
+        plt = Plot('AlpEditDNN_HMM_Dropout_All', channels=[['0/1 loss', '2/3 loss'], ['0/1 edit', '2/3 edit']], after_epoch=True)
         main_loop = MainLoop(data_stream = data_stream, 
                 algorithm=algo, 
                 extensions=[monitor, monitor_v, FinishAfter(after_n_epochs=2000), Printing(), plt])
 
         main_loop.run()
 
-        pfile = open('beta.pkl', 'wb')
+        pfile = open('2000.pkl', 'wb')
         pickle.dump(orig_cg, pfile)
-        # pickle.dump(wlh, pfile)
+        pickle.dump(wlh, pfile)
         pfile.close()
 
     def end(self):
