@@ -51,9 +51,11 @@ def init(valp, shuffle, normalize, prefix, concat, limit):
     train_features = np.asarray(fet, np.float32)
     train_targets = np.asarray(lab, np.uint8)
 
+    tr_mean = np.mean(train_features, axis=0)
+    tr_std = np.std(train_features, axis=0) + 1E-2
+
     if normalize:
-        train_features = ((train_features - np.mean(train_features, axis=0))
-                / (np.std(train_features, axis=0)) + 1E-2)
+        train_features = (train_features - tr_mean) / tr_std
 
     mult = len(range(-concat[0], concat[0]+1, concat[1]))
     def save_h5py(tn, start, stop):
@@ -110,6 +112,9 @@ def init(valp, shuffle, normalize, prefix, concat, limit):
     lenf = len(feat)
     features = np.empty((feat.shape[0], feat.shape[1]*mult))
 
+    if normalize:
+        feat = (feat - tr_mean) / tr_std
+
     with ProgressBar(maxval=lenf) as progbar:
         for i in range(lenf):
             arr = []
@@ -118,9 +123,8 @@ def init(valp, shuffle, normalize, prefix, concat, limit):
             features[i] = np.asarray(arr)
             progbar.update(i)
 
+
     np.save(pjoin(numpy_path, prefix+'test_features.npy'), features)
-
-
 
 if __name__ == '__main__':
     init(0.1, True, True, 'concat', [4, 2])

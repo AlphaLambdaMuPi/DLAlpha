@@ -1,3 +1,5 @@
 profiles/
 *.csv
 *.pkl
+hw1_out.txt
+hw2_out.txt
