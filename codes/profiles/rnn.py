@@ -28,9 +28,9 @@ from phomap import ph48239, id2ph, ph2id, ph2c
 
 CONCON = None
 HMM_RATIO = 0.01
-SLEN = 256
+SLEN = 64
 BNUM = 4
-LABEL = 48+1
+LABEL = 48 #+1
 
 from blocks.bricks.recurrent import BaseRecurrent, recurrent
 class FeedbackRNN(BaseRecurrent):
@@ -277,13 +277,13 @@ class Executor:
         # y = yy[:zm].reshape((zm//16, 16))
 
         DIMS = [108*5, 200, 200, 200, LABEL]
-        NUMS = [1, 4, 4, 4, 1]
+        NUMS = [1, 1, 1, 1, 1]
         # DIMS = [108*5, 48]
         # NUMS = [1, 1]
         FUNCS = [
-            # Rectifier, 
-            # Rectifier, 
-            # Rectifier, 
+            Rectifier, 
+            Rectifier, 
+            Rectifier, 
             # Rectifier, 
             # Rectifier, 
             # Maxout(num_pieces=5),
@@ -292,9 +292,9 @@ class Executor:
             # SimpleRecurrent,
             # SimpleRecurrent,
             # SimpleRecurrent,
-            LSTM,
-            LSTM,
-            LSTM,
+            # LSTM,
+            # LSTM,
+            # LSTM,
 
             # SequenceGenerator,
 
@@ -303,8 +303,10 @@ class Executor:
         ]
 
         def lllistool(i, inp, func):
+            if func == LSTM:
+                NUMS[i+1] *= 4
             sdim = DIMS[i]
-            if func == SimpleRecurrent:
+            if func == SimpleRecurrent or func == LSTM:
                 sdim = DIMS[i] + DIMS[i+1]
             l = Linear(input_dim=DIMS[i], output_dim=DIMS[i+1] * NUMS[i+1], 
                        weights_init=IsotropicGaussian(std=sdim**(-0.5)), 
@@ -351,13 +353,13 @@ class Executor:
 
         # j, wlh = Yimumu(y_hat, y)
         # cost = CategoricalCrossEntropy().apply(y_rsp, sfmx) + j
-        cost_p = CategoricalCrossEntropy().apply(y_rsp, sfmx)
-        cost_p = cost_p.astype(config.floatX)
-        cost = CTC_cost(y, y_hat)
+        cost = CategoricalCrossEntropy().apply(y_rsp, sfmx)
+        # cost_p = cost_p.astype(config.floatX)
+        # cost = CTC_cost(y, y_hat)
         cost = cost.astype(config.floatX)
 
         cg = ComputationGraph(cost)
-        cg_p = ComputationGraph(cost_p)
+        # cg_p = ComputationGraph(cost_p)
         orig_cg = cg
         ips = VariableFilter(roles=[INPUT])(cg.variables)
         ops = VariableFilter(roles=[OUTPUT])(cg.variables)
@@ -370,14 +372,16 @@ class Executor:
 
         mps = theano.shared(np.array([ph2id(ph48239(id2ph(t))) for t in range(48)]))
         # yh_dsf_rsp = theano.printing.Print('YapYapYap')(yh_dsf_rsp)
-        z_hat = T.argmax(yh_dsf_rsp[:,:-1], axis=1)
+        # z_hat = T.argmax(yh_dsf_rsp[:,:-1], axis=1)
+        z_hat = T.argmax(yh_dsf_rsp, axis=1)
         # z_hat = theano.printing.Print('Yap')(z_hat)
         # z_hat = Yimumu_Decode()(y_hat, wlh)
         z_hat_hat = CTC_Decode()(y_hat)
 
         y39,_ = scan(fn=lambda t: mps[t], outputs_info=None, sequences=[y_dsf_rsp])
         y_hat39,_ = scan(fn=lambda t: mps[t], outputs_info=None, sequences=[z_hat])
-        y_hat_hat39,_ = scan(fn=lambda t: mps[t], outputs_info=None, sequences=[z_hat_hat])
+        y_hat_hat39 = y_hat39
+        # y_hat_hat39,_ = scan(fn=lambda t: mps[t], outputs_info=None, sequences=[z_hat_hat])
         # trm = TrimOp()(y_hat_hat39)
         # trm = trm[1:1+trm[0]]
         # trm = theano.printing.Print('Trm')(trm)
@@ -405,12 +409,12 @@ class Executor:
         # data = H5PYDataset(path, which_set='train', load_in_memory=True)
         data_v = H5PYDataset(pjoin(PATH['fuel'], 'train_validate.hdf5'), which_set='validate', load_in_memory=True)
         num = data.num_examples
-        data_stream = DataStream(data, iteration_scheme=SequentialScheme(
+        data_stream = DataStream(data, iteration_scheme=ShuffledScheme(
                         num, batch_size=SLEN*BNUM))
         data_stream_v = DataStream(data_v, iteration_scheme=SequentialScheme(
                         data_v.num_examples, batch_size=SLEN*BNUM))
         algo = GradientDescent(cost=cost, params=Ws, step_rule=CompositeRule([
-            Momentum(0.1, 0.9)
+            Momentum(0.005, 0.9)
             # AdaDelta()
         ]))
         # algo_p = GradientDescent(cost=cost_p, params=cg_p.parameters, step_rule=CompositeRule([
@@ -421,7 +425,7 @@ class Executor:
                 data_stream=data_stream)
         monitor_v = DataStreamMonitoring( variables=[lost23, edit23],
                 data_stream=data_stream_v)
-        plt = Plot('AlpCTCYapCon', channels=[['0/1 loss', '2/3 loss'], ['0/1 edit', '2/3 edit']], after_epoch=True)
+        plt = Plot('AlpYap', channels=[['0/1 loss', '2/3 loss'], ['0/1 edit', '2/3 edit']], after_epoch=True)
 
         # main_loop_p = MainLoop(data_stream = data_stream, 
                 # algorithm=algo_p, 
@@ -434,7 +438,7 @@ class Executor:
 
         main_loop.run()
 
-        pfile = open('yap.pkl', 'wb')
+        pfile = open('zzz.pkl', 'wb')
         pickle.dump(orig_cg, pfile)
         # pickle.dump(wlh, pfile)
         pfile.close()
@@ -452,9 +456,10 @@ class Executor:
         test_hat = np.concatenate((test_hat, np.zeros((2, LABEL))), axis=0)
 
         alpha = T.tensor3(config.floatX)
+        beta = alpha.argmax(axis=2)
         # beta = alpha[:,:,:-1].argmax(axis=2)
         # beta = Yimumu_Decode()(alpha, wlh)
-        beta = CTC_Decode()(alpha)
+        # beta = CTC_Decode()(alpha)
         func2 = theano.function([alpha], beta)
 
         lens = []
@@ -483,12 +488,12 @@ class Executor:
             seq2.append(''.join(trim(fc4)))
 
         seq_flat = np.concatenate(seq)
-        with open('hw1_out.txt', 'w') as f:
+        with open('hw1_outz.txt', 'w') as f:
             f.write('id,prediction\n')
             for t, i in zip(tags, seq_flat):
                 f.write(t+','+i+'\n')
 
-        with open('hw2_out.txt', 'w') as f:
+        with open('hw2_outz.txt', 'w') as f:
             f.write('id,phone_sequence\n')
             for n, i in zip(names, seq2):
                 f.write(n+','+i+'\n')

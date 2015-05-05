@@ -35,6 +35,9 @@ class Main():
         init_fuel_parser.add_argument('-l', '--limit', action='store', type=int, default=99999999,
                                 help='The limit of rows build', dest='limit',
                                 nargs=1)
+        init_fuel_parser.add_argument('--state', action='store_true',
+                                help='Build with state label.', dest='state',
+                                )
 
         args = parser.parse_args()
 

@@ -2,10 +2,16 @@ from os.path import join as pjoin
 from settings import *
 
 phomap = {}
+statemap = {}
 with open(pjoin(PATH['phones'], '48_39.map')) as f:
     for ln in f:
         ls = ln.split()
         phomap[ls[0]] = ls[1]
+
+with open(pjoin(PATH['phones'], 'state_48_39.map')) as f:
+    for ln in f:
+        ls = ln.split()
+        statemap[int(ls[0])] = ls[2]
 
 with open(pjoin(PATH['phones'], '48_idx_chr.map')) as f:
     for ln in f:
@@ -29,6 +35,9 @@ def id2ph(p):
 
 def ph49238(p):
     return phomap[p][1]
+
+def state239(p):
+    return statemap[p]
 
 def ph48239(p):
     return phomap[p][1]

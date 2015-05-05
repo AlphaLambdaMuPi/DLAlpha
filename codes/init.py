@@ -14,6 +14,7 @@ def check_files():
         ('data', 'mfcc/test.ark'),
         ('data', 'mfcc/train.ark'),
         ('data', 'label/train.lab'),
+        ('data', 'state_label/train.lab'),
         ('data', 'phones/48_39.map'),
         ('data', 'phones/48_idx_chr.map'),
     ]
@@ -35,20 +36,20 @@ def get_group(s):
 
 def build_shelve(name, fg):
     lg.info('Build shelve {}...'.format(name))
-    shel = pjoin(PATH['shelve'], name)
+    shel = pjoin(PATH['shelve'], name + '_state')
     fbank = pjoin(PATH['fbank'], name + '.ark')
     mfcc = pjoin(PATH['mfcc'], name + '.ark')
     print(shel, fbank)
     
     if fg:
         lg.debug('Start loading answer label.')
-        label = pjoin(PATH['label'], name + '.lab')
+        label = pjoin(PATH['state_label'], name + '.lab')
         answer = {}
         with open(label) as f:
             for ln in f:
                 n, a = ln.strip('\n').split(',')
                 pr = get_group(n)
-                answer[pr] = a
+                answer[pr] = int(a)
     lg.debug('Load answer label done.')
 
     with shelve.open(shel) as sh:
@@ -103,7 +104,7 @@ def check_shelve():
     ]
 
     for s in shelves:
-        file_dir = pjoin(PATH[s[0]], s[1])
+        file_dir = pjoin(PATH[s[0]], s[1]+'_state')
         if isfile(file_dir):
             lg.info('Checking shelve {}: OK!'.format(file_dir))
         else:

@@ -10,7 +10,7 @@ import h5py
 from fuel.datasets.hdf5 import Hdf5Dataset, H5PYDataset
 lgr = logging.getLogger()
 
-def init(valp, shuffle, normalize, prefix, concat, limit):
+def init(valp, shuffle, normalize, prefix, concat, limit, state):
     limit = limit[0]
     if prefix == 'konkon' or prefix == 'concon':
         prefix = ''
@@ -26,7 +26,8 @@ def init(valp, shuffle, normalize, prefix, concat, limit):
 
     lgr.info('start building numpy datas, becareful for swap out! (need 4G)')
     lgr.info('Build train data.')
-    with shelve.open(SHELVE['train']) as f:
+    shelve_type = 'train_state' if state else 'train'
+    with shelve.open(SHELVE[shelve_type]) as f:
         names = f['names']
         if shuffle: random.shuffle(names)
         fet = []
@@ -34,10 +35,14 @@ def init(valp, shuffle, normalize, prefix, concat, limit):
         with ProgressBar(maxval=min(len(names), limit)) as progbar:
             cnt = 0
             for n in names:
+                #if n[0] == 'f': continue
                 dt = f[n]
                 for fr in dt:
                     fet.append(fr[1] + fr[2])
-                    lab.append([ph2id(fr[3])])
+                    if not state:
+                        lab.append([ph2id(fr[3])])
+                    else:
+                        lab.append([fr[3]])
                 cnt += 1
                 if cnt >= limit: break
                 progbar.update(cnt)
@@ -49,7 +54,7 @@ def init(valp, shuffle, normalize, prefix, concat, limit):
 
     
     train_features = np.asarray(fet, np.float32)
-    train_targets = np.asarray(lab, np.uint8)
+    train_targets = np.asarray(lab, np.uint16)
 
     tr_mean = np.mean(train_features, axis=0)
     tr_std = np.std(train_features, axis=0) + 1E-2
@@ -77,7 +82,7 @@ def init(valp, shuffle, normalize, prefix, concat, limit):
                 progbar.update(i)
 
         h5_targets = h5.create_dataset(
-            'targets', ct.shape, dtype='uint8')
+            'targets', ct.shape, dtype='uint16')
         h5_targets[...] = ct
         h5_features.dims[0].label = 'batch'
         h5_features.dims[1].label = 'feature'

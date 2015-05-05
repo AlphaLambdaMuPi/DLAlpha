@@ -22,17 +22,21 @@ from blocks.extensions.plot import Plot
 from blocks.extensions.monitoring import DataStreamMonitoring
 from os.path import join as pjoin
 from settings import *
-from phomap import ph48239, id2ph, ph2id
+from phomap import ph48239, id2ph, ph2id, state239
 from profile import BaseExecutor
+
+pfx = 'state'
 
 class Executor(BaseExecutor):
     def __init__(self):
         NAME = 'Strange_Dropout'
-        super().__init__(name=NAME, test_file='c42_test_features.npy')
+        path = PATH['numpy']+'/'+pfx+'_test_features.npy'
+        self.test_file = path
+        super().__init__(name=NAME, test_file=path)
         pass
 
     def get_io(self):
-        return self.x, self.y_hat39
+        return self.x, self.y_hat_prob
 
     def start(self):
         x = T.matrix('features', config.floatX)
@@ -40,21 +44,21 @@ class Executor(BaseExecutor):
 
         self.x = x
 
-        DIMS = [108*5, 1000, 1000, 1000, 48]
-        NUMS = [1, 1, 1, 1, 1]
+        DIMS = [108*5, 1000, 1000, 1000, 1000, 1943]
+        NUMS = [1, 1, 1, 1, 1, 1]
         FUNCS = [
-            # Rectifier(), 
-            # Rectifier(), 
-            # Rectifier(), 
-            # Rectifier(), 
-            # Rectifier(), 
+            Rectifier, 
+            Rectifier, 
+            Rectifier, 
+            Rectifier, 
+            # Rectifier, 
             # Maxout(num_pieces=5),
             # Maxout(num_pieces=5),
             # Maxout(num_pieces=5),
             # SimpleRecurrent,
             # SimpleRecurrent,
             # SimpleRecurrent,
-            Softmax
+            Softmax,
         ]
 
         def lllistool(i, inp, func):
@@ -76,6 +80,8 @@ class Executor(BaseExecutor):
             oup = lllistool(i, oup, FUNCS[i])
         y_hat = oup
 
+        self.y_hat_prob = y_hat
+
         cost = CategoricalCrossEntropy().apply(y.flatten(), y_hat).astype(config.floatX)
 
         cg = ComputationGraph(cost)
@@ -88,7 +94,8 @@ class Executor(BaseExecutor):
 
         cost.name = 'cost'
 
-        mps = theano.shared(np.array([ph2id(ph48239(id2ph(t))) for t in range(48)]))
+        # mps = theano.shared(np.array([ph2id(ph48239(id2ph(t))) for t in range(48)]))
+        mps = theano.shared(np.array([ph2id(state239(t)) for t in range(1943)]))
         z_hat = T.argmax(y_hat, axis=1)
 
         y39,_ = scan(fn=lambda t: mps[t], outputs_info=None, sequences=[y.flatten()])
@@ -106,10 +113,10 @@ class Executor(BaseExecutor):
         Ws = VariableFilter(roles=[WEIGHT])(cg.variables)
         norms = sum(w.norm(2) for w in Ws)
         norms.name = 'norms'
-        path = pjoin(PATH['fuel'], 'r42train.hdf5')
-        data = H5PYDataset(path, which_set='train', load_in_memory=True)#, subset=slice(0, 100000))
+        path = pjoin(PATH['fuel'], pfx+'_train.hdf5')
+        data = H5PYDataset(path, which_set='train', load_in_memory=True, subset=slice(0, 100000))
         # data = H5PYDataset(path, which_set='train', load_in_memory=True)
-        data_v = H5PYDataset(pjoin(PATH['fuel'], 'r42validate.hdf5'), which_set='validate', load_in_memory=True)
+        data_v = H5PYDataset(pjoin(PATH['fuel'], pfx+'_validate.hdf5'), which_set='validate', load_in_memory=True)
         num = data.num_examples
         data_stream = DataStream(data, iteration_scheme=ShuffledScheme(
                         num, batch_size=128))
@@ -120,14 +127,15 @@ class Executor(BaseExecutor):
                 data_stream=data_stream)
         monitor_v = DataStreamMonitoring( variables=[lost23],
                 data_stream=data_stream_v)
-        plt = Plot('Alp', channels=[['0/1 loss', '2/3 loss']], after_epoch=True)
+        plt = Plot('AlpAlpAlp', channels=[['0/1 loss', '2/3 loss']], after_epoch=True)
         main_loop = MainLoop(data_stream = data_stream, 
                 algorithm=algo, 
                 extensions=[monitor, monitor_v, FinishAfter(after_n_epochs=2000), Printing(), plt])
         
         main_loop.run()
 
-        pfile = open('beta.pkl', 'wb')
-        pickle.dump(orig_cg, pfile)
-        pickle.dump(cg, pfile)
-        pfile.close()
+
+        # pfile = open('beta.pkl', 'wb')
+        # pickle.dump(orig_cg, pfile)
+        # pickle.dump(cg, pfile)
+        # pfile.close()
