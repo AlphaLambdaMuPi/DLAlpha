@@ -98,6 +98,7 @@ class Executor(BaseExecutor):
         self.y_hat_prob = y_hat
 
         cost = CategoricalCrossEntropy().apply(y.flatten(), y_hat).astype(config.floatX)
+        orig_cost = cost
 
         cg = ComputationGraph(cost)
         orig_cg = cg
@@ -153,32 +154,38 @@ class Executor(BaseExecutor):
         # return
         ##############
 
-        vpath = PATH['numpy']+'/'+pfx+'_validate_features.npy'
+        vtd = 'test'
+
+        vpath = PATH['numpy']+'/'+pfx+'_'+vtd+'_features.npy'
         xt = np.load(vpath)
-        vpath = PATH['numpy']+'/'+pfx+'_validate_targets.npy'
-        ryt = np.load(vpath)
-        vpath = PATH['numpy']+'/'+pfx+'_validate_spoffset.npy'
+        # vpath = PATH['numpy']+'/'+pfx+'_'+vtd+'_targets.npy'
+        # ryt = np.load(vpath)
+        vpath = PATH['numpy']+'/'+pfx+'_'+vtd+'_spoffset.npy'
         sp_offset = np.load(vpath)
         tmppath = PATH['fuel']+'/alaltmp.hdf5'
 
         func = theano.function([x], z_hat)
+        func2 = theano.function([x], y_hat)
+
+        ans_hat = []
 
         start = 0
         totaldiff = 0
         tcnt = 0
         for i in sp_offset:
+            # if start > 10000: break
             end = i
             satW.set_value(np.identity(108).astype(config.floatX))
             satC.set_value(np.zeros((108, )).astype(config.floatX))
             # satW2.set_value(np.identity(108).astype(config.floatX))
             # satC2.set_value(np.zeros((108, )).astype(config.floatX))
-            xxt = xt[start:end]
-            ryyt = ryt[start:end]
+            xxt = xt[start:end].astype(config.floatX)
+            # ryyt = ryt[start:end]
             yyt = func(xxt)
             yyt = yyt.reshape((yyt.shape[0], 1))
 
-            score = np.sum(ryyt != yyt) / yyt.shape[0]
-            print(score)
+            # score = np.sum(ryyt != yyt) / yyt.shape[0]
+            # print(score)
 
             h5 = h5py.File(tmppath, mode='w')
             h5_features = h5.create_dataset('features', xxt.shape, dtype='float32')
@@ -201,12 +208,12 @@ class Executor(BaseExecutor):
             data_sat = H5PYDataset(tmppath, which_set='train', load_in_memory=True)
             data_stream = DataStream(data_sat, iteration_scheme=ShuffledScheme(
                         data_sat.num_examples, batch_size=64))
-            algo = GradientDescent(cost=cost, params=params, step_rule=CompositeRule([Momentum(0.003, 0.9)]))
+            algo = GradientDescent(cost=orig_cost, params=params, step_rule=CompositeRule([Momentum(0.003, 0.9)]))
 
             monitor_v = DataStreamMonitoring( variables=[lost23, cost],
                 data_stream=data_stream)
             main_loop = MainLoop(data_stream = data_stream, algorithm=algo, 
-                extensions=[FinishAfter(after_n_epochs=50)])
+                extensions=[FinishAfter(after_n_epochs=100)])
                 # extensions=[monitor_v, FinishAfter(after_n_epochs=500), Printing()])
         
             main_loop.run()
@@ -214,10 +221,19 @@ class Executor(BaseExecutor):
 
             yyt = func(xxt)
             yyt = yyt.reshape((yyt.shape[0], 1))
-            score2 = np.sum(ryyt != yyt) / yyt.shape[0]
-            diff = score2 - score
-            totaldiff += diff
-            tcnt += 1
-            print(score2, diff, totaldiff / tcnt)
+
+            # score2 = np.sum(ryyt != yyt) / yyt.shape[0]
+            # diff = score2 - score
+            # totaldiff += diff
+            # tcnt += 1
+            # print(score2, diff, totaldiff / tcnt)
+
+            anst = func2(xxt)
+            ans_hat.append(anst)
 
             start = end
+
+        ans_hat = np.concatenate(ans_hat, axis=0)
+        np.save('ans_hat.prob', ans_hat)
+        np.save('ans_hat.argmax', ans_hat.argmax(axis=1))
+
