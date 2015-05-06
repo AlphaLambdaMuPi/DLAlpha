@@ -11,7 +11,7 @@ class BaseExecutor:
         now_str = now.strftime('%m%d_%H%M%S')
         self.name = name + '_' + now_str
         self.path = os.path.join(PATH['output'], self.name)
-        # os.mkdir(self.path)
+        os.mkdir(self.path)
 
         # path = os.path.join(PATH['numpy'], test_file)
         # if not os.path.isfile(path):
@@ -39,7 +39,7 @@ class BaseExecutor:
         for i in range(TLN//1000 + 1):
             result.append(fun(test_feature[i*1000:(i+1)*1000]))
         result = np.concatenate(result, axis=0)
-        np.save('zzzzz.npy', result)
+        np.save(self.path + '/zzzzz.npy', result)
 
 
 #        from phomap import id2ph
