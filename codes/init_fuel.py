@@ -140,13 +140,21 @@ def init(valp, shuffle, normalize, prefix, concat, limit, state):
     with shelve.open(SHELVE['test']) as f:
         names = f['names']
         fet = []
+        cnt = 0
+        cur_name = "concon"
         with ProgressBar(maxval=len(names)) as progbar:
-            cnt = 0
+            num = 0
             for n in names:
+                u, s = n.split('_')
+                if u != cur_name:
+                    sp_offset.append(num)
+                    cur_name = u
                 dt = f[n]
                 for fr in dt:
                     fet.append(fr[1] + fr[2])
+                    num += 1
                 progbar.update(cnt)
+            sp_offset.append(num)
 
     feat = np.asarray(fet, np.float32)
     lenf = len(feat)
@@ -165,6 +173,7 @@ def init(valp, shuffle, normalize, prefix, concat, limit, state):
 
 
     np.save(pjoin(numpy_path, prefix+'test_features.npy'), features)
+    np.save(pjoin(numpy_path, prefix+'test_spoffset.npy'), np.asarray(sp_offset[1:]))
 
 if __name__ == '__main__':
     init(0.1, True, True, 'concat', [4, 2])
