@@ -27,7 +27,7 @@ from profile import BaseExecutor
 import h5py
 from fuel.datasets.hdf5 import Hdf5Dataset, H5PYDataset
 
-pfx = 'state'
+pfx = 'utt'
 
 class Executor(BaseExecutor):
     def __init__(self):
@@ -46,7 +46,7 @@ class Executor(BaseExecutor):
 
         self.x = x
 
-        DIMS = [108*5, 1000, 1000, 1000, 1000, 1943]
+        DIMS = [108*5, 1000, 1000, 1000, 1000, 48]
         NUMS = [1, 1, 1, 1, 1, 1]
         FUNCS = [
             Rectifier, 
@@ -109,8 +109,8 @@ class Executor(BaseExecutor):
 
         cost.name = 'cost'
 
-        # mps = theano.shared(np.array([ph2id(ph48239(id2ph(t))) for t in range(48)]))
-        mps = theano.shared(np.array([ph2id(state239(t)) for t in range(1943)]))
+        mps = theano.shared(np.array([ph2id(ph48239(id2ph(t))) for t in range(48)]))
+        # mps = theano.shared(np.array([ph2id(state239(t)) for t in range(1943)]))
         z_hat = T.argmax(y_hat, axis=1)
 
         y39,_ = scan(fn=lambda t: mps[t], outputs_info=None, sequences=[y.flatten()])
@@ -143,14 +143,14 @@ class Executor(BaseExecutor):
                 data_stream=data_stream)
         monitor_v = DataStreamMonitoring( variables=[lost23],
                 data_stream=data_stream_v)
-        plt = Plot('AlpAlpAlp', channels=[['0/1 loss', '2/3 loss']], after_epoch=True)
+        plt = Plot('AlpALP', channels=[['0/1 loss', '2/3 loss']], after_epoch=True)
         main_loop = MainLoop(data_stream = data_stream, 
                 algorithm=algo, 
                 extensions=[monitor, monitor_v, FinishAfter(after_n_epochs=2000), Printing(), plt])
         
         main_loop.run()
 
-        return
+        # return
         ##############
 
         vpath = PATH['numpy']+'/'+pfx+'_validate_features.npy'
@@ -202,8 +202,7 @@ class Executor(BaseExecutor):
             data_stream = DataStream(data_sat, iteration_scheme=ShuffledScheme(
                         data_sat.num_examples, batch_size=64))
             algo = GradientDescent(cost=cost, params=params, step_rule=CompositeRule([Momentum(0.003, 0.9)]))
-            # lost45 = (T.sum(T.neq(ryyt, y)) / yyt.shape[0]).astype(config.floatX)
-            # lost45.name = '4/5 loss'
+
             monitor_v = DataStreamMonitoring( variables=[lost23, cost],
                 data_stream=data_stream)
             main_loop = MainLoop(data_stream = data_stream, algorithm=algo, 
@@ -211,6 +210,7 @@ class Executor(BaseExecutor):
                 # extensions=[monitor_v, FinishAfter(after_n_epochs=500), Printing()])
         
             main_loop.run()
+
 
             yyt = func(xxt)
             yyt = yyt.reshape((yyt.shape[0], 1))
