@@ -1,0 +1,21 @@
+[12:28:44.61] check_file - INFO : It seems like you have the datas...
+[12:28:44.61] check_file - INFO : /home/step5/DLAlphaFinal/src/ssvm/../../data/phones/48_39.map OK
+[12:28:44.62] check_file - INFO : /home/step5/DLAlphaFinal/src/ssvm/../../data/phones/48_idx_chr.map OK
+[12:28:44.62] check_file - INFO : /home/step5/DLAlphaFinal/src/ssvm/../../data/fbank/train.ark OK
+[12:28:44.62] check_file - INFO : /home/step5/DLAlphaFinal/src/ssvm/../../data/fbank/test.ark OK
+[12:28:44.62] check_file - INFO : /home/step5/DLAlphaFinal/src/ssvm/../../data/label/train.lab OK
+[12:28:44.62] check_file - DEBUG : Start open shelve
+[12:28:44.68] check_file - INFO : Make dir /home/step5/DLAlphaFinal/src/ssvm/shelve
+[12:28:44.69] check_file - WARNING : shelve broken or not built, rebuilding...
+[12:29:12.520] read_input - INFO : Read 1124823 datas feature...
+[12:29:25.619] read_input - INFO : Read 1124823 datas label...
+[12:29:35.937] check_file - DEBUG : Done loading shelve
+[12:54:39.509] check_file - INFO : It seems like you have the datas...
+[12:54:39.509] check_file - INFO : /home/step5/DLAlphaFinal/src/ssvm/../../data/fbank/train.ark OK
+[12:54:39.509] check_file - INFO : /home/step5/DLAlphaFinal/src/ssvm/../../data/phones/48_39.map OK
+[12:54:39.510] check_file - INFO : /home/step5/DLAlphaFinal/src/ssvm/../../data/fbank/test.ark OK
+[12:54:39.510] check_file - INFO : /home/step5/DLAlphaFinal/src/ssvm/../../data/phones/48_idx_chr.map OK
+[12:54:39.510] check_file - INFO : /home/step5/DLAlphaFinal/src/ssvm/../../data/label/train.lab OK
+[12:54:39.510] check_file - DEBUG : Start open shelve
+[12:54:39.513] check_file - INFO : Make dir /home/step5/DLAlphaFinal/src/ssvm/shelve
+[12:54:39.515] check_file - WARNING : shelve broken or not built, rebuilding...
